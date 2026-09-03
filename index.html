@@ -1,0 +1,2867 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Finance" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#1e3a5f" id="meta-theme-color" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>Sajeev's Personal Financial Tracker</title>
+  <style>
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Theme tokens ── */
+:root, [data-theme="light"] {
+  --bg:           #f4f5f7;
+  --surface:      #ffffff;
+  --surface2:     #f0f1f5;
+  --border:       #dde1ea;
+  --text:         #1a1c2e;
+  --text-muted:   #6b7280;
+  --green:        #16a34a;
+  --amber:        #d97706;
+  --red:          #dc2626;
+  --blue:         #2563eb;
+  --blue-bg:      #eff6ff;
+  --blue-text:    #1d4ed8;
+  --purple:       #7c3aed;
+  --header-bg:    #1e3a5f;
+  --header-text:  #ffffff;
+  --shadow:       0 1px 4px rgba(0,0,0,0.10);
+  --shadow-md:    0 4px 16px rgba(0,0,0,0.12);
+  --radius:       12px;
+  --sidebar-w:    220px;
+  --sidebar-col:  56px;
+  --header-h:     54px;
+}
+
+[data-theme="dark"] {
+  --bg:           #0f0f1a;
+  --surface:      #1a1a2e;
+  --surface2:     #22223b;
+  --border:       #2e2e4a;
+  --text:         #e8e8f0;
+  --text-muted:   #8888aa;
+  --green:        #22c55e;
+  --amber:        #f59e0b;
+  --red:          #ef4444;
+  --blue:         #3b82f6;
+  --blue-bg:      #1e2a45;
+  --blue-text:    #93c5fd;
+  --purple:       #a855f7;
+  --header-bg:    #0d1b2a;
+  --header-text:  #e8e8f0;
+  --shadow:       0 1px 4px rgba(0,0,0,0.40);
+  --shadow-md:    0 4px 20px rgba(0,0,0,0.50);
+}
+
+/* ── Base ── */
+html { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 15px; -webkit-text-size-adjust: 100%; }
+body { min-height: 100dvh; background: var(--bg); overflow-x: hidden; transition: background 0.25s, color 0.25s; }
+
+/* ── Top header ── */
+#top-header {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  background: var(--header-bg);
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px 0 12px;
+  z-index: 200;
+  box-shadow: var(--shadow-md);
+}
+.sidebar-toggle-btn {
+  background: none; border: none; color: rgba(255,255,255,0.7);
+  font-size: 20px; cursor: pointer; padding: 6px 8px; border-radius: 6px;
+  transition: background 0.15s, color 0.15s; line-height: 1;
+  min-width: 36px; min-height: 36px;
+}
+.sidebar-toggle-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.top-header-title {
+  flex: 1; font-size: 16px; font-weight: 700; color: var(--header-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 8px;
+}
+.header-rupee { font-size: 20px; color: #f59e0b; font-weight: 900; }
+.top-header-actions { display: flex; gap: 4px; }
+.hdr-btn {
+  background: none; border: none; font-size: 18px; cursor: pointer;
+  padding: 6px 8px; border-radius: 8px; color: rgba(255,255,255,0.75);
+  transition: background 0.15s, color 0.15s;
+  min-width: 36px; min-height: 36px;
+}
+.hdr-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+/* ── App layout ── */
+#app {
+  display: flex;
+  padding-top: var(--header-h);
+  min-height: 100dvh;
+  position: relative;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-height: calc(100dvh - var(--header-h));
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  position: fixed;
+  left: 0;
+  top: var(--header-h);
+  bottom: 0;
+  z-index: 100;
+  transition: width 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.sidebar.collapsed { width: var(--sidebar-col); }
+
+/* ── Sidebar nav ── */
+.sidebar-nav {
+  padding: 14px 8px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 10px;
+  border-radius: 10px; border: none;
+  background: none; color: var(--text-muted);
+  font-size: 14px; font-weight: 500;
+  cursor: pointer; text-align: left;
+  white-space: nowrap; width: 100%;
+  transition: background 0.15s, color 0.15s;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--blue-bg); color: var(--blue-text); font-weight: 600; }
+.nav-icon  { font-size: 18px; min-width: 24px; text-align: center; flex-shrink: 0; }
+.nav-label { transition: opacity 0.2s; overflow: hidden; white-space: nowrap; }
+.sidebar.collapsed .nav-label { opacity: 0; width: 0; pointer-events: none; }
+
+/* ── Edge toggle button ── */
+.edge-toggle {
+  position: fixed;
+  top: calc(var(--header-h) + 80px);
+  left: calc(var(--sidebar-w) - 13px);
+  width: 26px; height: 26px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: 14px; font-weight: 700;
+  cursor: pointer; z-index: 110;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-md);
+  transition: left 0.25s cubic-bezier(.4,0,.2,1), transform 0.25s, background 0.15s, color 0.15s;
+}
+.edge-toggle:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+.sidebar.collapsed ~ .edge-toggle {
+  left: calc(var(--sidebar-col) - 13px);
+  transform: rotate(180deg);
+}
+
+/* ── Main content ── */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-height: calc(100dvh - var(--header-h));
+  transition: margin-left 0.25s cubic-bezier(.4,0,.2,1);
+  padding-bottom: 60px;
+}
+.main.collapsed { margin-left: var(--sidebar-col); }
+
+/* Center all page content */
+.main-inner {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* ── Tab content ── */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── Page header ── */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 0 12px; gap: 12px;
+}
+.page-title { font-size: 20px; font-weight: 700; }
+.page-desc  { font-size: 13px; color: var(--text-muted); line-height: 1.6; padding-bottom: 14px; }
+
+/* ── Month nav ── */
+.month-nav {
+  display: flex; align-items: center; gap: 8px; flex: 1;
+}
+.nav-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+  font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow);
+  transition: background 0.15s;
+}
+.nav-btn:hover { background: var(--surface2); }
+.month-selector-wrap { flex: 1; display: flex; gap: 8px; }
+.month-selector-wrap select, .year-select-inline {
+  flex: 1; padding: 7px 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); font-size: 14px; cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.add-btn {
+  padding: 8px 16px; border-radius: 8px;
+  background: var(--blue); color: #fff; border: none;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  white-space: nowrap; box-shadow: var(--shadow);
+  transition: opacity 0.15s;
+}
+.add-btn:hover { opacity: 0.88; }
+
+/* ── Summary strip ── */
+.summary-strip {
+  display: flex; gap: 10px; padding-bottom: 14px; flex-wrap: wrap;
+}
+.stat-card {
+  flex: 1; min-width: 120px;
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px 14px; border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-value { font-size: 16px; font-weight: 700; margin-top: 3px; }
+.stat-value.green  { color: var(--green); }
+.stat-value.red    { color: var(--red); }
+.stat-value.amber  { color: var(--amber); }
+
+/* ── Take-Home strip ── */
+.takehome-strip {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border-radius: var(--radius);
+  padding: 10px 14px; border: 1px solid var(--border);
+  box-shadow: var(--shadow); margin-bottom: 12px;
+}
+.takehome-label {
+  font-size: 12px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap;
+}
+.takehome-val {
+  font-size: 16px; font-weight: 700; color: var(--green);
+  flex: 1; text-align: right;
+}
+.takehome-input {
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 10px; font-size: 14px;
+  background: var(--surface2); color: var(--text);
+  width: 140px; text-align: right;
+}
+.takehome-input:focus { outline: none; border-color: var(--green); }
+
+/* ── Privacy blur ── */
+.blurred {
+  filter: blur(6px);
+  user-select: none;
+  transition: filter 0.3s;
+  cursor: pointer;
+}
+.blurred.revealed { filter: none; }
+.th-reveal-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 16px; padding: 2px 4px; line-height: 1;
+  opacity: 0.6; transition: opacity 0.15s;
+}
+.th-reveal-btn:hover { opacity: 1; }
+
+/* ── Expense list ── */
+.expense-list { display: flex; flex-direction: column; gap: 7px; }
+
+.expense-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px 14px; border: 1px solid var(--border);
+  cursor: pointer; position: relative; overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.expense-item:hover { border-color: var(--blue); box-shadow: var(--shadow-md); }
+
+.expense-item::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+}
+.expense-item.s-paid::before    { background: var(--green); }
+.expense-item.s-partial::before { background: var(--amber); }
+.expense-item.s-overdue::before { background: var(--red); }
+.expense-item.s-due-soon::before{ background: var(--amber); }
+.expense-item.s-unpaid::before  { background: var(--border); }
+.expense-item.s-zero::before    { background: transparent; }
+
+.item-due-badge {
+  font-size: 12px; font-weight: 700;
+  min-width: 32px; text-align: center;
+  padding: 3px 6px; border-radius: 6px;
+}
+.s-paid     .item-due-badge { background: #dcfce7; color: var(--green); }
+.s-partial  .item-due-badge { background: #fef3c7; color: var(--amber); }
+.s-overdue  .item-due-badge { background: #fee2e2; color: var(--red); }
+.s-due-soon .item-due-badge { background: #fef3c7; color: var(--amber); animation: pulse-ring 2s infinite; }
+.s-unpaid   .item-due-badge { background: var(--surface2); color: var(--text-muted); }
+.s-zero     .item-due-badge { background: var(--surface2); color: var(--border); }
+
+[data-theme="dark"] .s-paid    .item-due-badge { background: #16532d33; }
+[data-theme="dark"] .s-partial .item-due-badge { background: #78350f33; }
+[data-theme="dark"] .s-overdue .item-due-badge { background: #7f1d1d33; }
+[data-theme="dark"] .s-due-soon .item-due-badge { background: #78350f33; }
+
+@keyframes pulse-ring {
+  0%,100% { box-shadow: 0 0 0 0 rgba(217,119,6,0.4); }
+  50%      { box-shadow: 0 0 0 5px transparent; }
+}
+
+.item-body       { flex: 1; min-width: 0; }
+.item-name       { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-meta       { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.item-amount-col { text-align: right; min-width: 90px; }
+.item-amount     { font-size: 14px; font-weight: 700; }
+.item-remaining  { font-size: 12px; color: var(--amber); margin-top: 2px; }
+.item-zero       { color: var(--text-muted); font-style: italic; font-size: 13px; }
+
+/* Inline pay / undo button on expense rows */
+.item-pay-btn {
+  flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: none; cursor: pointer; font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+.item-pay-now {
+  background: rgba(22,163,74,0.12); color: var(--green);
+}
+.item-pay-now:hover  { background: var(--green); color: #fff; transform: scale(1.1); }
+.item-pay-undo {
+  background: rgba(107,114,128,0.1); color: var(--text-muted); font-size: 12px;
+}
+.item-pay-undo:hover { background: rgba(220,38,38,0.12); color: var(--red); transform: scale(1.1); }
+
+/* ── Template list ── */
+.template-list { display: flex; flex-direction: column; gap: 7px; }
+
+.template-item {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px 16px; border: 1px solid var(--border);
+  cursor: pointer; box-shadow: var(--shadow);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.template-item:hover { border-color: var(--blue); box-shadow: var(--shadow-md); }
+.template-item.inactive { opacity: 0.5; }
+
+.tpl-day {
+  font-size: 13px; font-weight: 700;
+  min-width: 34px; text-align: center;
+  padding: 4px 6px; border-radius: 6px;
+  background: var(--surface2); color: var(--text-muted);
+}
+.tpl-body   { flex: 1; min-width: 0; }
+.tpl-name   { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tpl-code   { font-size: 10px; font-weight: 700; font-family: monospace; letter-spacing: 0.5px;
+              background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border);
+              border-radius: 4px; padding: 1px 5px; vertical-align: middle; margin-left: 5px; }
+.tpl-meta   { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.tpl-badge  { font-size: 11px; padding: 2px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+.tpl-badge.active   { background: #dcfce7; color: var(--green); }
+.tpl-badge.inactive { background: var(--surface2); color: var(--text-muted); }
+[data-theme="dark"] .tpl-badge.active { background: #16532d33; }
+.tpl-amount { font-size: 14px; font-weight: 700; min-width: 80px; text-align: right; }
+
+/* Template row action buttons */
+.tpl-actions {
+  display: flex; gap: 4px; align-items: center; margin-left: 8px;
+}
+.tpl-action-btn {
+  position: relative;
+  background: none; border: 1px solid transparent; border-radius: 6px;
+  width: 28px; height: 28px; cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.tpl-action-btn:hover { background: var(--surface2); border-color: var(--border); }
+.tpl-action-btn.tpl-toggle:hover { color: var(--amber); border-color: var(--amber); }
+.tpl-action-btn.tpl-delete:hover { color: var(--red); border-color: var(--red); }
+.tpl-action-btn::after {
+  content: attr(data-tooltip);
+  position: absolute; bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%);
+  background: var(--text); color: var(--surface);
+  font-size: 11px; font-weight: 500; white-space: nowrap;
+  padding: 3px 8px; border-radius: 5px;
+  pointer-events: none; opacity: 0;
+  transition: opacity 0.15s; z-index: 50;
+}
+.tpl-action-btn:hover::after { opacity: 1; }
+
+/* ── RSU ── */
+.rsu-summary-strip { display: flex; gap: 10px; padding-bottom: 14px; flex-wrap: wrap; }
+.rsu-list          { display: flex; flex-direction: column; gap: 7px; }
+
+.rsu-item {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px 16px; border: 1px solid var(--border);
+  cursor: pointer; box-shadow: var(--shadow);
+  transition: border-color 0.15s;
+}
+.rsu-item:hover { border-color: var(--purple); }
+.rsu-row     { display: flex; justify-content: space-between; align-items: center; }
+.rsu-name    { font-size: 15px; font-weight: 600; }
+.rsu-date    { font-size: 12px; color: var(--text-muted); }
+.rsu-fig-val.purple { color: var(--purple); }
+
+/* ── Summary insights strip ── */
+.summary-insights {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
+}
+.insight-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 6px 12px;
+  font-size: 12px; color: var(--text-muted);
+  box-shadow: var(--shadow);
+}
+.insight-chip strong { color: var(--text); }
+.insight-icon { font-size: 13px; }
+.insight-high { border-color: rgba(220,38,38,0.25); }
+.insight-low  { border-color: rgba(22,163,74,0.25); }
+.insight-rsu  { border-color: rgba(124,58,237,0.25); }
+
+/* Month trend arrow */
+.smr-trend {
+  display: block; font-size: 10px; font-weight: 700; margin-top: 3px;
+}
+.smr-trend.up   { color: var(--red); }
+.smr-trend.down { color: var(--green); }
+
+.annual-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;
+}
+.annual-stat {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 14px; border: 1px solid var(--border);
+  text-align: center; box-shadow: var(--shadow);
+}
+.annual-stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+.annual-stat-value { font-size: 17px; font-weight: 700; }
+
+.summary-section-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-muted); padding-bottom: 10px;
+}
+
+.smr {
+  background: var(--surface); border-radius: var(--radius);
+  border: 1px solid var(--border); margin-bottom: 8px;
+  overflow: hidden; cursor: pointer; box-shadow: var(--shadow);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.smr:hover { border-color: var(--blue); box-shadow: var(--shadow-md); }
+.smr.expanded { border-color: var(--blue); }
+
+/* Collapsed summary row — always visible */
+.smr-collapsed {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+}
+.smr-month  { font-weight: 700; font-size: 14px; min-width: 36px; }
+.smr-collapsed-total { font-size: 14px; font-weight: 700; flex: 1; }
+.smr-collapsed-right { display: flex; align-items: center; gap: 8px; }
+.smr-chevron {
+  font-size: 11px; color: var(--text-muted);
+  transition: transform 0.2s; display: inline-block;
+}
+.smr.expanded .smr-chevron { transform: rotate(180deg); }
+
+/* Expanded detail section — hidden by default */
+.smr-detail {
+  display: none;
+  border-top: 1px solid var(--border);
+  padding: 10px 14px 12px;
+}
+.smr.expanded .smr-detail { display: block; }
+
+.smr-bars   { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
+.smr-bar-row { display: flex; align-items: center; gap: 6px; }
+.smr-bar-label { font-size: 11px; color: var(--text-muted); min-width: 40px; }
+.smr-bar-track { flex: 1; height: 7px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.smr-bar-fill  { height: 100%; border-radius: 4px; transition: width 0.4s; }
+.smr-bar-fill.due  { background: var(--blue); }
+.smr-bar-fill.paid { background: var(--green); }
+.smr-detail-stats { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+.smr-detail-stat  { font-size: 12px; color: var(--text-muted); }
+.smr-detail-stat strong { color: var(--text); }
+.smr-paid-pct   { font-size: 12px; color: var(--green); }
+
+.smr-deficit {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 7px 10px 0; margin-top: 6px;
+  border-top: 1px solid var(--border);
+  background: rgba(220,38,38,0.06); border-radius: 6px;
+}
+.smr-surplus-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 7px 10px 0; margin-top: 6px;
+  border-top: 1px solid var(--border);
+  background: rgba(22,163,74,0.06); border-radius: 6px;
+}
+.smr-deficit-label { font-size: 12px; color: var(--text-muted); }
+.smr-deficit-note  { font-size: 11px; color: var(--text-muted); flex: 1; }
+.smr-deficit-val   { font-size: 13px; font-weight: 700; color: var(--red); }
+.smr-surplus-val   { font-size: 13px; font-weight: 700; color: var(--green); }
+
+/* ── Modal ── */
+.modal {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: flex-end;
+  backdrop-filter: blur(4px);
+}
+.modal.hidden { display: none; }
+.modal-box {
+  width: 100%; max-width: 520px; margin: 0 auto;
+  background: var(--surface); border-radius: 20px 20px 0 0;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 16px));
+  max-height: 92dvh; overflow-y: auto;
+  box-shadow: var(--shadow-md);
+  /* Prevent modal content from being hidden behind home indicator */
+  padding-bottom: max(20px, calc(env(safe-area-inset-bottom) + 16px));
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px;
+}
+.modal-header h3 { font-size: 17px; font-weight: 700; }
+.close-btn {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  width: 30px; height: 30px; border-radius: 50%; font-size: 13px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.close-btn:hover { background: var(--border); }
+
+form label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 13px; color: var(--text-muted); margin-bottom: 14px;
+}
+form input, form select {
+  padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--text); font-size: 16px; /* 16px prevents iOS auto-zoom */
+  transition: border-color 0.15s;
+}
+form input:focus, form select:focus { outline: none; border-color: var(--blue); }
+
+.modal-actions { display: flex; gap: 10px; margin-top: 4px; }
+.modal-actions.column { flex-direction: column; }
+
+.btn-primary {
+  flex: 1; padding: 12px; border-radius: 10px;
+  background: var(--blue); color: #fff; border: none;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-primary:hover { opacity: 0.88; }
+.btn-secondary {
+  flex: 1; padding: 12px; border-radius: 10px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border);
+  font-size: 15px; font-weight: 500; cursor: pointer; text-align: center;
+}
+.btn-ghost {
+  padding: 12px 16px; border-radius: 10px;
+  background: none; color: var(--red); border: 1px solid var(--red);
+  font-size: 14px; cursor: pointer; transition: background 0.15s;
+}
+.btn-ghost:hover { background: rgba(220,38,38,0.08); }
+.file-label { display: block; }
+.hidden { display: none !important; }
+.sync-info { font-size: 14px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5; }
+.empty-state { text-align: center; color: var(--text-muted); padding: 48px 0; font-size: 14px; }
+
+/* ── Future Tab (Assets & Net Worth) ── */
+.asset-category {
+  background: var(--surface); border-radius: var(--radius);
+  border: 1px solid var(--border); margin-bottom: 10px;
+  overflow: hidden; box-shadow: var(--shadow);
+}
+.asset-cat-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 14px; cursor: pointer;
+  transition: background 0.15s;
+}
+.asset-cat-header:hover { background: var(--surface2); }
+.asset-category.expanded .asset-cat-header { border-bottom: 1px solid var(--border); }
+.asset-cat-icon  { font-size: 18px; }
+.asset-cat-label { flex: 1; font-weight: 600; font-size: 14px; }
+.asset-cat-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(59,130,246,0.12); color: var(--blue);
+  font-size: 11px; font-weight: 700; min-width: 20px; height: 18px;
+  padding: 0 5px; border-radius: 10px; margin-left: 6px;
+  vertical-align: middle;
+}
+.asset-cat-total { font-size: 14px; font-weight: 700; }
+.asset-cat-chevron {
+  font-size: 11px; color: var(--text-muted);
+  transition: transform 0.2s; margin-left: 6px;
+}
+.asset-category.expanded .asset-cat-chevron { transform: rotate(180deg); }
+
+.asset-cat-body { display: none; padding: 6px 10px 10px; }
+.asset-category.expanded .asset-cat-body { display: block; }
+
+.asset-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 6px; border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background 0.12s; border-radius: 6px;
+}
+.asset-item:last-of-type { border-bottom: none; }
+.asset-item:hover { background: var(--surface2); }
+.asset-item.ast-sold, .asset-item.ast-closed { opacity: 0.5; }
+
+.asset-item-body { flex: 1; }
+.asset-item-name   { font-size: 14px; font-weight: 600; }
+.asset-item-notes  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.asset-item-commit { font-size: 11px; color: var(--blue); margin-top: 3px; }
+
+.asset-item-right  { text-align: right; }
+.asset-item-value  { font-size: 14px; font-weight: 700; }
+.asset-item-assured { font-size: 11px; color: var(--blue); margin-top: 2px; }
+.fig-words {
+  font-size: 10px; font-weight: 400; color: var(--text-muted);
+  letter-spacing: 0.2px; margin-top: 1px;
+}
+.asset-status-badge {
+  display: inline-block; font-size: 10px; font-weight: 600;
+  padding: 2px 7px; border-radius: 20px; margin-top: 4px;
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.asset-status-badge.ast-active { background: rgba(22,163,74,0.12); color: var(--green); }
+.asset-status-badge.ast-closed { background: var(--surface2); color: var(--text-muted); }
+.asset-status-badge.ast-sold   { background: var(--surface2); color: var(--text-muted); }
+
+.asset-add-btn {
+  margin-top: 8px; width: 100%; padding: 8px;
+  background: none; border: 1px dashed var(--border);
+  border-radius: 8px; color: var(--text-muted);
+  font-size: 13px; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+}
+.asset-add-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+  :root { --header-h: 50px; }
+
+  /* Header — compact, no safe-area expansion */
+  #top-header { padding: 0 10px; gap: 8px; height: var(--header-h); }
+  .top-header-title { font-size: 12px; gap: 5px; }
+  .header-rupee { font-size: 16px; }
+  .hdr-btn { font-size: 16px; padding: 6px 6px; }
+  .sidebar-toggle-btn { display: none; }
+  .edge-toggle { display: none; }
+
+  /* Bottom tab bar — fixed at bottom, full width */
+  .sidebar {
+    position: fixed !important;
+    width: 100% !important;
+    height: auto !important; min-height: unset !important;
+    top: auto !important;
+    bottom: 0 !important; left: 0 !important; right: 0 !important;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.12);
+    overflow: visible !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    z-index: 100;
+  }
+  .sidebar.collapsed { width: 100% !important; }
+  .sidebar-nav {
+    flex-direction: row; padding: 4px 4px;
+    width: 100%; justify-content: space-around; gap: 0;
+  }
+  .nav-item {
+    flex-direction: column; gap: 2px; padding: 6px 4px;
+    flex: 1; justify-content: center; align-items: center; border-radius: 8px;
+    min-height: 48px; width: auto;
+  }
+  .nav-label { opacity: 1 !important; width: auto !important; font-size: 10px; }
+  .nav-icon  { font-size: 22px; }
+
+  /* Main — no left margin, clear bottom nav */
+  .main {
+    margin-left: 0 !important;
+    padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Page headers */
+  .page-header { padding: 14px 0 10px; gap: 8px; }
+  .page-title { font-size: 17px; }
+
+  /* Month nav */
+  .month-nav { gap: 6px; }
+  .month-selector-wrap { gap: 6px; }
+  .month-selector-wrap select { font-size: 13px; padding: 6px 6px; }
+  .add-btn { padding: 8px 12px; font-size: 13px; }
+
+  /* Stat cards — 2 per row */
+  .summary-strip { gap: 8px; }
+  .stat-card { min-width: calc(50% - 4px); padding: 10px 12px; }
+  .stat-value { font-size: 15px; }
+
+  /* Take-home strip */
+  .takehome-strip { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+  .takehome-label { font-size: 11px; }
+  .takehome-val { font-size: 14px; flex: unset; }
+  .takehome-input { width: 100%; font-size: 15px; padding: 8px 10px; }
+
+  /* Expense rows */
+  .expense-item { padding: 10px 10px 10px 14px; gap: 8px; min-height: 48px; }
+  .item-amount-col { min-width: 76px; }
+  .item-amount { font-size: 13px; }
+  .item-pay-btn { width: 36px; height: 36px; font-size: 16px; }
+
+  /* Templates */
+  .template-item { padding: 10px 10px; gap: 8px; }
+  .tpl-badge { display: none; }
+  .tpl-amount { min-width: 60px; font-size: 13px; }
+  .tpl-action-btn { width: 34px; height: 34px; }
+  .tpl-action-btn::after { display: none; }
+
+  /* RSU */
+  .rsu-item { padding: 12px 12px; }
+  .rsu-name { font-size: 14px; }
+
+  /* Summary */
+  .annual-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .annual-stat { padding: 10px; }
+  .annual-stat-value { font-size: 14px; }
+  .summary-insights { gap: 6px; }
+  .insight-chip { font-size: 11px; padding: 5px 10px; }
+  .smr-collapsed { padding: 10px 10px; gap: 8px; }
+  .smr-month { min-width: 28px; font-size: 13px; }
+  .smr-collapsed-total { font-size: 13px; }
+  .smr-bar-label { min-width: 32px; font-size: 10px; }
+  .smr-deficit, .smr-surplus-row { padding: 6px 8px 8px; gap: 6px; }
+  .trend-chart-wrap { padding: 8px 2px 2px; }
+}
+
+/* ── Desktop modal centered ── */
+@media (min-width: 641px) {
+  .modal { align-items: center; }
+  .modal-box { border-radius: 20px; margin: 16px; }
+}
+
+/* ── Trend chart ── */
+.trend-chart-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 8px 4px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.trend-chart-wrap svg .chart-bar-cl {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.trend-chart-wrap svg .chart-bar-cl:hover { opacity: 1 !important; }
+
+</style>
+</head>
+<body>
+
+  <!-- ── Top Header ── -->
+  <header id="top-header">
+    <button id="btn-sidebar-toggle" class="sidebar-toggle-btn" title="Toggle sidebar">☰</button>
+    <div class="top-header-title">
+      <span class="header-rupee">₹</span>
+      Sajeev's Personal Financial Tracker Portal
+    </div>
+    <div class="top-header-actions">
+      <button class="hdr-btn" id="btn-notify" title="Enable Reminders">🔔</button>
+      <button class="hdr-btn" id="btn-sync"   title="Export / Import">☁️</button>
+      <button class="hdr-btn" id="btn-theme"  title="Toggle theme">☀️</button>
+    </div>
+  </header>
+
+  <div id="app">
+
+    <!-- ── Sidebar ── -->
+    <aside id="sidebar" class="sidebar">
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="monthly">
+          <span class="nav-icon">📅</span><span class="nav-label">Monthly</span>
+        </button>
+        <button class="nav-item" data-tab="templates">
+          <span class="nav-icon">📋</span><span class="nav-label">Templates</span>
+        </button>
+        <button class="nav-item" data-tab="rsu">
+          <span class="nav-icon">📈</span><span class="nav-label">RSU Sales</span>
+        </button>
+        <button class="nav-item" data-tab="summary">
+          <span class="nav-icon">📊</span><span class="nav-label">Summary</span>
+        </button>
+        <button class="nav-item" data-tab="future">
+          <span class="nav-icon">🏦</span><span class="nav-label">Future</span>
+        </button>
+      </nav>
+    </aside>
+
+    <!-- ── Edge toggle (always visible) ── -->
+    <button id="btn-edge-toggle" class="edge-toggle" title="Expand / Collapse sidebar">‹</button>
+
+    <!-- ── Main ── -->
+    <main id="main" class="main">
+      <div class="main-inner">
+
+        <!-- MONTHLY TAB -->
+        <div id="tab-monthly" class="tab-content active">
+          <div class="page-header">
+            <div class="month-nav">
+              <button class="nav-btn" id="btn-prev">‹</button>
+              <div class="month-selector-wrap">
+                <select id="month-select"></select>
+                <select id="year-select"></select>
+              </div>
+              <button class="nav-btn" id="btn-next">›</button>
+            </div>
+            <button class="add-btn" id="btn-add-item">+ Add</button>
+          </div>
+
+          <div class="summary-strip" id="summary-strip">
+            <div class="stat-card">
+              <div class="stat-label">Total Due</div>
+              <div class="stat-value" id="stat-total">₹0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Paid</div>
+              <div class="stat-value green" id="stat-paid">₹0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Remaining</div>
+              <div class="stat-value red" id="stat-remaining">₹0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Deficit</div>
+              <div class="stat-value amber" id="stat-deficit">₹0</div>
+            </div>
+          </div>
+
+          <div class="takehome-strip">
+            <span class="takehome-label">💰 Take-Home Salary</span>
+            <span class="takehome-val blurred" id="stat-takehome">—</span>
+            <button id="btn-th-reveal" class="th-reveal-btn" title="Toggle visibility">👁</button>
+            <input type="number" id="inp-takehome" class="takehome-input" placeholder="Enter amount (₹)" min="0" step="1" />
+          </div>
+
+          <div id="expense-list" class="expense-list"></div>
+        </div>
+
+        <!-- TEMPLATES TAB -->
+        <div id="tab-templates" class="tab-content">
+          <div class="page-header">
+            <h2 class="page-title">Expense Templates</h2>
+            <button class="add-btn" id="btn-add-template">+ Add</button>
+          </div>
+          <p class="page-desc">These categories are auto-populated into every new month. Edit amounts, due days, or mark inactive to skip.</p>
+          <div id="template-list" class="template-list"></div>
+        </div>
+
+        <!-- RSU TAB -->
+        <div id="tab-rsu" class="tab-content">
+          <div class="page-header">
+            <h2 class="page-title">RSU Sales</h2>
+            <select id="rsu-year-select" class="year-select-inline" style="max-width:90px"></select>
+            <button class="add-btn" id="btn-add-rsu">+ Add Sale</button>
+          </div>
+          <div id="rsu-summary" class="rsu-summary-strip"></div>
+          <div id="rsu-list" class="rsu-list"></div>
+        </div>
+
+        <!-- SUMMARY TAB -->
+        <div id="tab-summary" class="tab-content">
+          <div class="page-header">
+            <h2 class="page-title">Annual Overview</h2>
+            <select id="summary-year-select" class="year-select-inline"></select>
+          </div>
+          <div id="summary-content"></div>
+        </div>
+
+        <!-- FUTURE TAB -->
+        <div id="tab-future" class="tab-content">
+          <div class="page-header">
+            <h2 class="page-title">Assets &amp; Net Worth</h2>
+          </div>
+          <div id="future-content"></div>
+        </div>
+
+      </div><!-- /.main-inner -->
+    </main>
+  </div><!-- /#app -->
+
+  <!-- ── MODAL: Add/Edit Expense ── -->
+  <div id="modal-expense" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-expense-title">Add Expense</h3>
+        <button class="close-btn" data-close="modal-expense">✕</button>
+      </div>
+      <form id="form-expense">
+        <label>Category / Name
+          <input type="text" id="inp-name" placeholder="e.g. HDFC Credit Card" required />
+        </label>
+        <label>Amount (₹)
+          <input type="number" id="inp-amount" placeholder="0" min="0" step="0.01" />
+        </label>
+        <label>Due Date
+          <input type="date" id="inp-due" required />
+        </label>
+        <label>Status
+          <select id="inp-status">
+            <option value="">Unpaid</option>
+            <option value="Paid">Paid</option>
+            <option value="Partial">Partial</option>
+          </select>
+        </label>
+        <div id="partial-row" class="hidden">
+          <label>Amount Paid (₹)
+            <input type="number" id="inp-paid" placeholder="0" min="0" step="0.01" />
+          </label>
+        </div>
+        <label>Notes
+          <input type="text" id="inp-notes" placeholder="Optional notes" />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="btn-delete-item">Delete</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── MODAL: Add/Edit Template ── -->
+  <div id="modal-template" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-tpl-title">Edit Template</h3>
+        <button class="close-btn" data-close="modal-template">✕</button>
+      </div>
+      <form id="form-template">
+        <label>Short Code
+          <input type="text" id="tpl-code" placeholder="e.g. HDFC-HL" maxlength="12" style="text-transform:uppercase" />
+        </label>
+        <label>Category Name
+          <input type="text" id="tpl-name" placeholder="e.g. HDFC Home Loan" required />
+        </label>
+        <label>Default Amount (₹)
+          <input type="number" id="tpl-amount" placeholder="0" min="0" step="0.01" />
+        </label>
+        <label>Due Day of Month (1–31)
+          <input type="number" id="tpl-day" placeholder="e.g. 5" min="1" max="31" required />
+        </label>
+        <label>Active
+          <select id="tpl-active">
+            <option value="true">Yes — include in new months</option>
+            <option value="false">No — skip for new months</option>
+          </select>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="btn-delete-template">Delete</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── MODAL: Add/Edit RSU ── -->
+  <div id="modal-rsu" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-rsu-title">Add RSU Sale</h3>
+        <button class="close-btn" data-close="modal-rsu">✕</button>
+      </div>
+      <form id="form-rsu">
+        <label>Date of Sale
+          <input type="date" id="rsu-date" required />
+        </label>
+        <label>Company / Grant
+          <input type="text" id="rsu-company" placeholder="e.g. SAP SE" />
+        </label>
+        <label>Shares Sold
+          <input type="number" id="rsu-shares" placeholder="0" min="0" step="0.0001" />
+        </label>
+        <label>Sale Price per Share (₹)
+          <input type="number" id="rsu-price" placeholder="0" min="0" step="0.01" />
+        </label>
+        <label>Total Sale Proceeds (₹)
+          <input type="number" id="rsu-proceeds" placeholder="Auto-calculated" min="0" step="0.01" />
+        </label>
+        <label>Notes
+          <input type="text" id="rsu-notes" placeholder="Optional" />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="btn-delete-rsu">Delete</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── MODAL: Sync ── -->
+  <div id="modal-sync" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Export / Import Data</h3>
+        <button class="close-btn" data-close="modal-sync">✕</button>
+      </div>
+      <p class="sync-info">Save your data as a JSON file to iCloud Drive. Re-import on any device to sync.</p>
+      <div class="modal-actions column">
+        <button class="btn-primary" id="btn-export">⬇ Export to JSON file</button>
+        <label class="btn-secondary file-label">
+          ⬆ Import from JSON file
+          <input type="file" id="inp-import" accept=".json" style="display:none" />
+        </label>
+        <button class="btn-ghost" id="btn-clear-data">⚠ Clear all data</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: Add/Edit Asset ── -->
+  <div id="modal-asset" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-asset-title">Add Asset</h3>
+        <button class="close-btn" data-close="modal-asset">✕</button>
+      </div>
+      <form id="form-asset">
+        <label>Category
+          <select id="ast-cat">
+            <option value="investments">💰 Investments &amp; Savings</option>
+            <option value="property">🏠 Property</option>
+            <option value="vehicles">🚗 Vehicles</option>
+            <option value="insurance">🛡 Insurance</option>
+            <option value="chitti">🎰 Chitti</option>
+            <option value="debts">📋 Debts &amp; Liabilities</option>
+          </select>
+        </label>
+        <label>Name
+          <input type="text" id="ast-name" placeholder="e.g. HDFC FD" required />
+        </label>
+        <label>Current Value (₹)
+          <input type="number" id="ast-value" placeholder="0" min="0" step="1" />
+        </label>
+        <div id="ast-assured-row" class="hidden">
+          <label>Sum Assured (₹)
+            <input type="number" id="ast-assured" placeholder="0" min="0" step="1" />
+          </label>
+        </div>
+        <div id="ast-unvested-row" class="hidden">
+          <label>Unvested RSU Value (₹)
+            <input type="number" id="ast-unvested" placeholder="0" min="0" step="1" />
+          </label>
+        </div>
+        <label>Commitment Amount (₹)
+          <input type="number" id="ast-commitment" placeholder="0 if none" min="0" step="1" />
+        </label>
+        <label>Commitment Frequency
+          <select id="ast-freq">
+            <option value="">None</option>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annual">Annual</option>
+            <option value="one-time">One-time</option>
+          </select>
+        </label>
+        <label>Status
+          <select id="ast-status">
+            <option value="active">Active</option>
+            <option value="closed">Closed</option>
+            <option value="sold">Sold</option>
+          </select>
+        </label>
+        <label>Notes
+          <input type="text" id="ast-notes" placeholder="Optional" />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" id="btn-delete-asset">Delete</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+// ── Category Templates (current state as of 2026) ─────────────────
+const SEED_TEMPLATES = [
+  {id:"tpl_01", code:"SBI-CC",      name:"SBI Credit Card",            dueDay:1,  defaultAmount:0,      active:true},
+  {id:"tpl_02", code:"MAID",        name:"Maid",                        dueDay:2,  defaultAmount:4500,   active:true},
+  {id:"tpl_03", code:"TUT-NAL",     name:"Tution Fees - Nalini",        dueDay:2,  defaultAmount:3000,   active:true},
+  {id:"tpl_04", code:"TUT-ANU",     name:"Tution Fees - Anu",           dueDay:2,  defaultAmount:3600,   active:true},
+  {id:"tpl_05", code:"CARWASH",     name:"Car Wash",                    dueDay:2,  defaultAmount:1200,   active:true},
+  {id:"tpl_06", code:"KAT-ETR",     name:"Kathu Etram Fees",            dueDay:2,  defaultAmount:2400,   active:true},
+  {id:"tpl_07", code:"HDFC-DIN",    name:"HDFC Diners Credit Card",     dueDay:3,  defaultAmount:0,      active:true},
+  {id:"tpl_08", code:"HDFC-RUP",    name:"HDFC Rupay Card",             dueDay:3,  defaultAmount:0,      active:true},
+  {id:"tpl_09", code:"CRED-PL",     name:"CRED Personal Loan",          dueDay:3,  defaultAmount:6047,   active:true},
+  {id:"tpl_10", code:"HDFC-HL",     name:"HDFC Home Loan",              dueDay:5,  defaultAmount:133756, active:true},
+  {id:"tpl_11", code:"HDFC-PL",     name:"HDFC Personal Loan",          dueDay:7,  defaultAmount:34605,  active:true},
+  {id:"tpl_12", code:"LIC-1",       name:"LIC 1",                       dueDay:7,  defaultAmount:5564,   active:true},
+  {id:"tpl_13", code:"LIC-2",       name:"LIC 2",                       dueDay:7,  defaultAmount:5564,   active:true},
+  {id:"tpl_14", code:"ONECARD",     name:"OneCard - SIB Credit Card",   dueDay:9,  defaultAmount:0,      active:true},
+  {id:"tpl_15", code:"KAT-BAL",     name:"Kathu Ballet Fees",           dueDay:10, defaultAmount:0,      active:true},
+  {id:"tpl_16", code:"FED-SCP",     name:"Fed Scapia Credit Card",      dueDay:13, defaultAmount:0,      active:true},
+  {id:"tpl_17", code:"CHITTI",      name:"Chitti",                      dueDay:15, defaultAmount:28475,  active:true},
+  {id:"tpl_18", code:"THK-KAR",     name:"Thakku Karatte Fees",         dueDay:15, defaultAmount:0,      active:true},
+  {id:"tpl_19", code:"AMEX",        name:"Amex Card",                   dueDay:19, defaultAmount:0,      active:true},
+  {id:"tpl_20", code:"KAT-KEY",     name:"Kathu Keyboard Class",        dueDay:20, defaultAmount:0,      active:true},
+  // Inactive — closed / superseded
+  {id:"tpl_21", code:"HDFC-CL",     name:"HDFC Consumer Loan",          dueDay:5,  defaultAmount:0,      active:false},
+  {id:"tpl_22", code:"STANDC",      name:"StandC Credit Card",          dueDay:13, defaultAmount:0,      active:false},
+  {id:"tpl_23", code:"SCHOOL",      name:"School Fees",                 dueDay:15, defaultAmount:0,      active:false},
+  {id:"tpl_24", code:"HDFC-CC",     name:"HDFC Credit Card",            dueDay:3,  defaultAmount:0,      active:false},
+  {id:"tpl_25", code:"TPT",         name:"Thakku/Kathu Transport Fees", dueDay:16, defaultAmount:0,      active:false},
+];
+
+// ── Take-Home Salary seed data (from 2025-summary tab) ────────────
+const SEED_TAKEHOME = {
+  "2025-01": 144683,
+  "2025-02": 113415,
+  "2025-03": 1017973,
+  "2025-04": 254891,
+  "2025-05": 188220,
+  "2025-06": 285586,
+  "2025-07": 281971,
+  "2025-08": 306486,
+  "2025-09": 317981,
+  "2025-10": 191062,
+  "2025-11": 192756,
+  "2025-12": 318577,
+  // 2026 — to be filled in by user
+};
+
+// ── RSU Sales 2025 (from 2025 - summary tab) ──────────────────────
+// Proceeds = gross sale amount per month. Tax/basis not available in summary.
+const SEED_RSU = [
+  {id:"rsu_25_01",date:"2025-01-15",company:"SAP SE",shares:0,price:0,proceeds:441493,tax:0,basis:0,notes:"Jan 2025"},
+  {id:"rsu_25_02",date:"2025-02-15",company:"SAP SE",shares:0,price:0,proceeds:248626,tax:0,basis:0,notes:"Feb 2025"},
+  {id:"rsu_25_05",date:"2025-05-15",company:"SAP SE",shares:0,price:0,proceeds:494904,tax:0,basis:0,notes:"May 2025"},
+  {id:"rsu_25_07",date:"2025-07-15",company:"SAP SE",shares:0,price:0,proceeds:382092,tax:0,basis:0,notes:"Jul 2025"},
+  {id:"rsu_25_10",date:"2025-10-15",company:"SAP SE",shares:0,price:0,proceeds:624132,tax:0,basis:0,notes:"Oct 2025"},
+  {id:"rsu_25_12",date:"2025-12-15",company:"SAP SE",shares:0,price:0,proceeds:443934,tax:0,basis:0,notes:"Dec 2025"},
+];
+
+// ── 2025 Monthly Data ──────────────────────────────────────────────
+const SEED_2025 = {
+  "2025-01": [
+    {id:"j01_01",name:"SBI Credit Card",amount:82921,due:"2025-01-01",status:"Paid",paidAmount:82921,notes:""},
+    {id:"j01_02",name:"Maid",amount:3500,due:"2025-01-01",status:"Paid",paidAmount:3500,notes:""},
+    {id:"j01_03",name:"Tution Fees",amount:1400,due:"2025-01-02",status:"Paid",paidAmount:1400,notes:""},
+    {id:"j01_04",name:"Car Wash",amount:700,due:"2025-01-02",status:"Paid",paidAmount:700,notes:""},
+    {id:"j01_05",name:"HDFC Credit Card",amount:136678,due:"2025-01-02",status:"Paid",paidAmount:136678,notes:""},
+    {id:"j01_06",name:"HDFC Consumer Loan",amount:0,due:"2025-01-05",status:"",paidAmount:0,notes:""},
+    {id:"j01_07",name:"HDFC Home Loan",amount:111930,due:"2025-01-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"j01_08",name:"Kathu Etram Fees",amount:2400,due:"2025-01-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"j01_09",name:"HDFC Personal Loan",amount:23780,due:"2025-01-07",status:"Paid",paidAmount:23780,notes:""},
+    {id:"j01_10",name:"LIC 1",amount:5564,due:"2025-01-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j01_11",name:"LIC 2",amount:5564,due:"2025-01-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j01_12",name:"OneCard",amount:24558,due:"2025-01-08",status:"Paid",paidAmount:24558,notes:""},
+    {id:"j01_13",name:"StandC Credit Card",amount:4280,due:"2025-01-13",status:"",paidAmount:0,notes:""},
+    {id:"j01_14",name:"Chitti",amount:23092,due:"2025-01-15",status:"Paid",paidAmount:23092,notes:""},
+    {id:"j01_15",name:"Thakku/Kathu Transport Fees",amount:0,due:"2025-01-16",status:"",paidAmount:0,notes:""},
+    {id:"j01_16",name:"Thakku Keyboard Class",amount:2400,due:"2025-01-20",status:"",paidAmount:0,notes:""},
+    {id:"j01_17",name:"Amex",amount:0,due:"2025-01-20",status:"",paidAmount:0,notes:""},
+  ],
+  "2025-02": [
+    {id:"j02_01",name:"SBI Credit Card",amount:27527,due:"2025-02-01",status:"Paid",paidAmount:27527,notes:""},
+    {id:"j02_02",name:"Maid",amount:3500,due:"2025-02-01",status:"Paid",paidAmount:3500,notes:""},
+    {id:"j02_03",name:"Tution Fees",amount:1400,due:"2025-02-02",status:"Paid",paidAmount:1400,notes:""},
+    {id:"j02_04",name:"Car Wash",amount:700,due:"2025-02-02",status:"Paid",paidAmount:700,notes:""},
+    {id:"j02_05",name:"HDFC Credit Card",amount:163107,due:"2025-02-02",status:"Paid",paidAmount:163107,notes:""},
+    {id:"j02_06",name:"HDFC Consumer Loan",amount:0,due:"2025-02-05",status:"",paidAmount:0,notes:""},
+    {id:"j02_07",name:"HDFC Home Loan",amount:111930,due:"2025-02-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"j02_08",name:"Kathu Etram Fees",amount:2400,due:"2025-02-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"j02_09",name:"HDFC Personal Loan",amount:23780,due:"2025-02-07",status:"Paid",paidAmount:23780,notes:""},
+    {id:"j02_10",name:"LIC 1",amount:5564,due:"2025-02-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j02_11",name:"LIC 2",amount:5564,due:"2025-02-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j02_12",name:"OneCard",amount:24248,due:"2025-02-08",status:"Paid",paidAmount:24248,notes:""},
+    {id:"j02_13",name:"Kathu Ballet Fees",amount:18010,due:"2025-02-10",status:"Paid",paidAmount:18010,notes:""},
+    {id:"j02_14",name:"StandC Credit Card",amount:2,due:"2025-02-13",status:"Paid",paidAmount:2,notes:""},
+    {id:"j02_15",name:"Chitti",amount:23092,due:"2025-02-15",status:"",paidAmount:0,notes:""},
+    {id:"j02_16",name:"Thakku Keyboard Class",amount:2400,due:"2025-02-20",status:"",paidAmount:0,notes:""},
+    {id:"j02_17",name:"Amex",amount:0,due:"2025-02-20",status:"",paidAmount:0,notes:""},
+  ],
+  "2025-03": [
+    {id:"j03_01",name:"SBI Credit Card",amount:77428,due:"2025-03-01",status:"Paid",paidAmount:77428,notes:""},
+    {id:"j03_02",name:"Maid",amount:3500,due:"2025-03-01",status:"Paid",paidAmount:3500,notes:""},
+    {id:"j03_03",name:"Tution Fees",amount:1400,due:"2025-03-02",status:"Paid",paidAmount:1400,notes:""},
+    {id:"j03_04",name:"Car Wash",amount:1000,due:"2025-03-02",status:"Paid",paidAmount:1000,notes:""},
+    {id:"j03_05",name:"HDFC Credit Card",amount:47042,due:"2025-03-02",status:"Paid",paidAmount:47042,notes:""},
+    {id:"j03_06",name:"HDFC Consumer Loan",amount:0,due:"2025-03-05",status:"Paid",paidAmount:0,notes:""},
+    {id:"j03_07",name:"HDFC Home Loan",amount:111930,due:"2025-03-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"j03_08",name:"Kathu Etram Fees",amount:2400,due:"2025-03-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"j03_09",name:"HDFC Personal Loan",amount:23780,due:"2025-03-07",status:"Paid",paidAmount:23780,notes:""},
+    {id:"j03_10",name:"LIC 1",amount:5564,due:"2025-03-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j03_11",name:"LIC 2",amount:5564,due:"2025-03-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j03_12",name:"OneCard",amount:12419,due:"2025-03-08",status:"Paid",paidAmount:12419,notes:""},
+    {id:"j03_13",name:"Kathu Ballet Fees",amount:0,due:"2025-03-10",status:"",paidAmount:0,notes:""},
+    {id:"j03_14",name:"StandC Credit Card",amount:2,due:"2025-03-13",status:"Paid",paidAmount:2,notes:""},
+    {id:"j03_15",name:"Chitti",amount:23092,due:"2025-03-15",status:"Paid",paidAmount:23092,notes:""},
+    {id:"j03_16",name:"Thakku Keyboard Class",amount:2400,due:"2025-03-20",status:"Paid",paidAmount:2400,notes:""},
+    {id:"j03_17",name:"Amex",amount:25000,due:"2025-03-20",status:"Paid",paidAmount:25000,notes:""},
+  ],
+  "2025-04": [
+    {id:"j04_01",name:"SBI Credit Card",amount:5491,due:"2025-04-01",status:"Paid",paidAmount:5491,notes:""},
+    {id:"j04_02",name:"Maid",amount:3500,due:"2025-04-01",status:"Paid",paidAmount:3500,notes:""},
+    {id:"j04_03",name:"Tution Fees",amount:1400,due:"2025-04-02",status:"Paid",paidAmount:1400,notes:""},
+    {id:"j04_04",name:"Car Wash",amount:1000,due:"2025-04-02",status:"Paid",paidAmount:1000,notes:""},
+    {id:"j04_05",name:"HDFC Credit Card",amount:30263,due:"2025-04-02",status:"Paid",paidAmount:30263,notes:""},
+    {id:"j04_06",name:"HDFC Consumer Loan",amount:0,due:"2025-04-05",status:"",paidAmount:0,notes:""},
+    {id:"j04_07",name:"HDFC Home Loan",amount:111930,due:"2025-04-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"j04_08",name:"Kathu Etram Fees",amount:2400,due:"2025-04-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"j04_09",name:"HDFC Personal Loan",amount:23780,due:"2025-04-07",status:"Paid",paidAmount:23780,notes:""},
+    {id:"j04_10",name:"LIC 1",amount:5564,due:"2025-04-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j04_11",name:"LIC 2",amount:5564,due:"2025-04-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j04_12",name:"OneCard",amount:2919,due:"2025-04-08",status:"Paid",paidAmount:2919,notes:""},
+    {id:"j04_13",name:"Kathu Ballet Fees",amount:0,due:"2025-04-10",status:"",paidAmount:0,notes:""},
+    {id:"j04_14",name:"StandC Credit Card",amount:0,due:"2025-04-13",status:"",paidAmount:0,notes:""},
+    {id:"j04_15",name:"Chitti",amount:24475,due:"2025-04-15",status:"Paid",paidAmount:24475,notes:""},
+    {id:"j04_16",name:"School Fees",amount:150000,due:"2025-04-15",status:"Paid",paidAmount:150000,notes:""},
+    {id:"j04_17",name:"Amex",amount:435000,due:"2025-04-19",status:"Paid",paidAmount:435000,notes:""},
+    {id:"j04_18",name:"Thakku Keyboard Class",amount:2400,due:"2025-04-20",status:"Paid",paidAmount:2400,notes:""},
+  ],
+  "2025-05": [
+    {id:"j05_01",name:"SBI Credit Card",amount:101297,due:"2025-05-01",status:"Paid",paidAmount:101297,notes:""},
+    {id:"j05_02",name:"Maid",amount:4000,due:"2025-05-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"j05_03",name:"Tution Fees",amount:1400,due:"2025-05-02",status:"Paid",paidAmount:1400,notes:""},
+    {id:"j05_04",name:"Car Wash",amount:850,due:"2025-05-02",status:"Paid",paidAmount:850,notes:""},
+    {id:"j05_05",name:"HDFC Credit Card",amount:130490,due:"2025-05-03",status:"Partial",paidAmount:23582,notes:""},
+    {id:"j05_06",name:"HDFC Home Loan",amount:111930,due:"2025-05-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"j05_07",name:"Kathu Etram Fees",amount:2400,due:"2025-05-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"j05_08",name:"LIC 1",amount:5564,due:"2025-05-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j05_09",name:"LIC 2",amount:5564,due:"2025-05-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j05_10",name:"OneCard - SIB",amount:23423,due:"2025-05-08",status:"Paid",paidAmount:23423,notes:""},
+    {id:"j05_11",name:"Kathu Ballet Fees",amount:0,due:"2025-05-10",status:"Paid",paidAmount:0,notes:""},
+    {id:"j05_12",name:"StandC Credit Card",amount:38365,due:"2025-05-13",status:"Paid",paidAmount:38365,notes:""},
+    {id:"j05_13",name:"Chitti",amount:24475,due:"2025-05-15",status:"Paid",paidAmount:24475,notes:""},
+    {id:"j05_14",name:"School Fees",amount:0,due:"2025-05-15",status:"Paid",paidAmount:0,notes:""},
+    {id:"j05_15",name:"Amex",amount:0,due:"2025-05-19",status:"Paid",paidAmount:0,notes:""},
+    {id:"j05_16",name:"Thakku Keyboard Class",amount:2400,due:"2025-05-20",status:"Paid",paidAmount:2400,notes:""},
+  ],
+  "2025-06": [
+    {id:"j06_01",name:"SBI Credit Card",amount:116157,due:"2025-06-01",status:"Paid",paidAmount:116157,notes:""},
+    {id:"j06_02",name:"Maid",amount:4000,due:"2025-06-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"j06_03",name:"Tution Fees",amount:2000,due:"2025-06-02",status:"Paid",paidAmount:2000,notes:""},
+    {id:"j06_04",name:"Car Wash",amount:850,due:"2025-06-02",status:"Paid",paidAmount:850,notes:""},
+    {id:"j06_05",name:"HDFC Credit Card",amount:130490,due:"2025-06-02",status:"Paid",paidAmount:130490,notes:""},
+    {id:"j06_06",name:"HDFC Home Loan",amount:111930,due:"2025-06-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"j06_07",name:"Kathu Etram Fees",amount:2400,due:"2025-06-06",status:"",paidAmount:0,notes:""},
+    {id:"j06_08",name:"LIC 1",amount:5564,due:"2025-06-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j06_09",name:"LIC 2",amount:5564,due:"2025-06-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j06_10",name:"OneCard - SIB",amount:10440,due:"2025-06-08",status:"Paid",paidAmount:10440,notes:""},
+    {id:"j06_11",name:"Kathu Ballet Fees",amount:0,due:"2025-06-10",status:"",paidAmount:0,notes:""},
+    {id:"j06_12",name:"StandC Credit Card",amount:38300,due:"2025-06-13",status:"",paidAmount:0,notes:""},
+    {id:"j06_13",name:"Chitti",amount:24475,due:"2025-06-15",status:"",paidAmount:0,notes:""},
+    {id:"j06_14",name:"School Fees",amount:0,due:"2025-06-15",status:"",paidAmount:0,notes:""},
+    {id:"j06_15",name:"Amex",amount:0,due:"2025-06-19",status:"",paidAmount:0,notes:""},
+    {id:"j06_16",name:"Thakku Keyboard Class",amount:2400,due:"2025-06-20",status:"",paidAmount:0,notes:""},
+  ],
+  "2025-07": [
+    {id:"j07_01",name:"SBI Credit Card",amount:218173,due:"2025-07-01",status:"Paid",paidAmount:218173,notes:""},
+    {id:"j07_02",name:"Maid",amount:4000,due:"2025-07-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"j07_03",name:"Tution Fees",amount:2000,due:"2025-07-02",status:"Paid",paidAmount:2000,notes:""},
+    {id:"j07_04",name:"Car Wash",amount:850,due:"2025-07-02",status:"Paid",paidAmount:850,notes:""},
+    {id:"j07_05",name:"HDFC Credit Card",amount:128498,due:"2025-07-03",status:"Paid",paidAmount:128498,notes:""},
+    {id:"j07_06",name:"HDFC Home Loan",amount:111930,due:"2025-07-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"j07_07",name:"Kathu Etram Fees",amount:2400,due:"2025-07-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"j07_08",name:"LIC 1",amount:5564,due:"2025-07-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j07_09",name:"LIC 2",amount:5564,due:"2025-07-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j07_10",name:"OneCard - SIB",amount:9469,due:"2025-07-08",status:"Paid",paidAmount:9469,notes:""},
+    {id:"j07_11",name:"Kathu Ballet Fees",amount:0,due:"2025-07-10",status:"",paidAmount:0,notes:""},
+    {id:"j07_12",name:"StandC Credit Card",amount:38300,due:"2025-07-13",status:"Paid",paidAmount:38925,notes:"Overpaid by ₹625"},
+    {id:"j07_13",name:"Chitti",amount:24475,due:"2025-07-15",status:"Paid",paidAmount:24475,notes:""},
+    {id:"j07_14",name:"School Fees",amount:0,due:"2025-07-15",status:"",paidAmount:0,notes:""},
+    {id:"j07_15",name:"Amex",amount:0,due:"2025-07-19",status:"",paidAmount:0,notes:""},
+    {id:"j07_16",name:"Thakku Keyboard Class",amount:2400,due:"2025-07-20",status:"Paid",paidAmount:2400,notes:""},
+  ],
+  "2025-08": [
+    {id:"j08_01",name:"SBI Credit Card",amount:151228,due:"2025-08-01",status:"Paid",paidAmount:151228,notes:""},
+    {id:"j08_02",name:"Maid",amount:4000,due:"2025-08-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"j08_03",name:"Tution Fees",amount:2000,due:"2025-08-02",status:"Paid",paidAmount:2000,notes:""},
+    {id:"j08_04",name:"Car Wash",amount:850,due:"2025-08-02",status:"Paid",paidAmount:850,notes:""},
+    {id:"j08_05",name:"HDFC Credit Card",amount:59531,due:"2025-08-03",status:"Paid",paidAmount:59531,notes:""},
+    {id:"j08_06",name:"HDFC Home Loan",amount:111930,due:"2025-08-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"j08_07",name:"Kathu Etram Fees",amount:2400,due:"2025-08-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"j08_08",name:"LIC 1",amount:5564,due:"2025-08-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j08_09",name:"LIC 2",amount:5564,due:"2025-08-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j08_10",name:"OneCard - SIB",amount:15176,due:"2025-08-08",status:"Paid",paidAmount:15176,notes:""},
+    {id:"j08_11",name:"Kathu Ballet Fees",amount:18300,due:"2025-08-10",status:"Paid",paidAmount:18300,notes:""},
+    {id:"j08_12",name:"StandC Credit Card",amount:0,due:"2025-08-13",status:"",paidAmount:0,notes:""},
+    {id:"j08_13",name:"Chitti",amount:24475,due:"2025-08-15",status:"Paid",paidAmount:24475,notes:""},
+    {id:"j08_14",name:"School Fees",amount:0,due:"2025-08-15",status:"",paidAmount:0,notes:""},
+    {id:"j08_15",name:"Amex",amount:0,due:"2025-08-19",status:"",paidAmount:0,notes:""},
+    {id:"j08_16",name:"Thakku Keyboard Class",amount:2400,due:"2025-08-20",status:"Paid",paidAmount:2400,notes:""},
+  ],
+  "2025-09": [
+    {id:"j09_01",name:"SBI Credit Card",amount:151135,due:"2025-09-01",status:"Paid",paidAmount:151135,notes:""},
+    {id:"j09_02",name:"Maid",amount:4000,due:"2025-09-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"j09_03",name:"Tution Fees",amount:2000,due:"2025-09-02",status:"Paid",paidAmount:2000,notes:""},
+    {id:"j09_04",name:"Car Wash",amount:850,due:"2025-09-02",status:"Paid",paidAmount:850,notes:""},
+    {id:"j09_05",name:"HDFC Credit Card",amount:539531,due:"2025-09-03",status:"Partial",paidAmount:250000,notes:""},
+    {id:"j09_06",name:"HDFC Home Loan",amount:111930,due:"2025-09-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"j09_07",name:"Kathu Etram Fees",amount:2400,due:"2025-09-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"j09_08",name:"LIC 1",amount:5564,due:"2025-09-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j09_09",name:"LIC 2",amount:5564,due:"2025-09-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j09_10",name:"OneCard - SIB",amount:4133,due:"2025-09-08",status:"Paid",paidAmount:4133,notes:""},
+    {id:"j09_11",name:"Kathu Ballet Fees",amount:0,due:"2025-09-10",status:"",paidAmount:0,notes:""},
+    {id:"j09_12",name:"StandC Credit Card",amount:0,due:"2025-09-13",status:"",paidAmount:0,notes:""},
+    {id:"j09_13",name:"Chitti",amount:24475,due:"2025-09-15",status:"Paid",paidAmount:24475,notes:""},
+    {id:"j09_14",name:"School Fees",amount:0,due:"2025-09-15",status:"",paidAmount:0,notes:""},
+    {id:"j09_15",name:"Amex",amount:163367,due:"2025-09-19",status:"",paidAmount:0,notes:""},
+    {id:"j09_16",name:"Thakku Keyboard Class",amount:2400,due:"2025-09-20",status:"",paidAmount:0,notes:""},
+  ],
+  "2025-10": [
+    {id:"j10_01",name:"SBI Credit Card",amount:230232,due:"2025-10-01",status:"Paid",paidAmount:230232,notes:""},
+    {id:"j10_02",name:"Maid",amount:4000,due:"2025-10-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"j10_03",name:"Tution Fees",amount:2000,due:"2025-10-02",status:"Paid",paidAmount:2000,notes:""},
+    {id:"j10_04",name:"Car Wash",amount:850,due:"2025-10-02",status:"Paid",paidAmount:850,notes:""},
+    {id:"j10_05",name:"HDFC Credit Card",amount:0,due:"2025-10-03",status:"Paid",paidAmount:0,notes:""},
+    {id:"j10_06",name:"HDFC Home Loan",amount:111930,due:"2025-10-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"j10_07",name:"Kathu Etram Fees",amount:2400,due:"2025-10-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"j10_08",name:"LIC 1",amount:5564,due:"2025-10-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j10_09",name:"LIC 2",amount:5564,due:"2025-10-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j10_10",name:"OneCard - SIB",amount:89883,due:"2025-10-08",status:"Paid",paidAmount:89883,notes:""},
+    {id:"j10_11",name:"Kathu Ballet Fees",amount:0,due:"2025-10-10",status:"",paidAmount:0,notes:""},
+    {id:"j10_12",name:"StandC Credit Card",amount:0,due:"2025-10-13",status:"",paidAmount:0,notes:""},
+    {id:"j10_13",name:"Chitti",amount:24475,due:"2025-10-15",status:"Paid",paidAmount:24475,notes:""},
+    {id:"j10_14",name:"School Fees",amount:0,due:"2025-10-15",status:"",paidAmount:0,notes:""},
+    {id:"j10_15",name:"Amex",amount:252772,due:"2025-10-19",status:"Paid",paidAmount:252772,notes:""},
+    {id:"j10_16",name:"Thakku Keyboard Class",amount:2400,due:"2025-10-20",status:"Paid",paidAmount:2400,notes:""},
+  ],
+  "2025-11": [
+    {id:"j11_01",name:"SBI Credit Card",amount:50892,due:"2025-11-01",status:"Paid",paidAmount:50892,notes:""},
+    {id:"j11_02",name:"Maid",amount:4000,due:"2025-11-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"j11_03",name:"Tution Fees",amount:2000,due:"2025-11-02",status:"Paid",paidAmount:2000,notes:""},
+    {id:"j11_04",name:"Car Wash",amount:850,due:"2025-11-02",status:"Paid",paidAmount:850,notes:""},
+    {id:"j11_05",name:"HDFC Credit Card",amount:276690,due:"2025-11-03",status:"Paid",paidAmount:276690,notes:""},
+    {id:"j11_06",name:"HDFC Rupay Card",amount:62637,due:"2025-11-03",status:"Paid",paidAmount:62637,notes:""},
+    {id:"j11_07",name:"HDFC Personal Loan",amount:34065,due:"2025-11-07",status:"Paid",paidAmount:34065,notes:""},
+    {id:"j11_08",name:"HDFC Home Loan",amount:111930,due:"2025-11-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"j11_09",name:"Kathu Etram Fees",amount:2400,due:"2025-11-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"j11_10",name:"LIC 1",amount:5564,due:"2025-11-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j11_11",name:"LIC 2",amount:5564,due:"2025-11-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j11_12",name:"OneCard - SIB",amount:13389,due:"2025-11-08",status:"Paid",paidAmount:13389,notes:""},
+    {id:"j11_13",name:"Kathu Ballet Fees",amount:0,due:"2025-11-10",status:"",paidAmount:0,notes:""},
+    {id:"j11_14",name:"StandC Credit Card",amount:0,due:"2025-11-13",status:"",paidAmount:0,notes:""},
+    {id:"j11_15",name:"Chitti",amount:24475,due:"2025-11-15",status:"Paid",paidAmount:24475,notes:""},
+    {id:"j11_16",name:"School Fees",amount:0,due:"2025-11-15",status:"",paidAmount:0,notes:""},
+    {id:"j11_17",name:"Amex",amount:164636,due:"2025-11-19",status:"Paid",paidAmount:164636,notes:""},
+    {id:"j11_18",name:"Thakku Keyboard Class",amount:2400,due:"2025-11-20",status:"",paidAmount:0,notes:""},
+  ],
+  "2025-12": [
+    {id:"j12_01",name:"SBI Credit Card",amount:119483,due:"2025-12-01",status:"Paid",paidAmount:119483,notes:""},
+    {id:"j12_02",name:"Maid",amount:4000,due:"2025-12-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"j12_03",name:"Tution Fees",amount:2000,due:"2025-12-02",status:"Paid",paidAmount:2000,notes:""},
+    {id:"j12_04",name:"Car Wash",amount:850,due:"2025-12-02",status:"Paid",paidAmount:850,notes:""},
+    {id:"j12_05",name:"HDFC Diners Credit Card",amount:71418,due:"2025-12-03",status:"Paid",paidAmount:71418,notes:""},
+    {id:"j12_06",name:"HDFC Rupay Card",amount:26683,due:"2025-12-03",status:"Paid",paidAmount:26683,notes:""},
+    {id:"j12_07",name:"HDFC Personal Loan",amount:34065,due:"2025-12-07",status:"Paid",paidAmount:34065,notes:""},
+    {id:"j12_08",name:"HDFC Home Loan",amount:111930,due:"2025-12-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"j12_09",name:"Kathu Etram Fees",amount:2400,due:"2025-12-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"j12_10",name:"LIC 1",amount:5564,due:"2025-12-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j12_11",name:"LIC 2",amount:5564,due:"2025-12-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"j12_12",name:"OneCard - SIB",amount:34650,due:"2025-12-09",status:"Paid",paidAmount:34650,notes:""},
+    {id:"j12_13",name:"Kathu Ballet Fees",amount:0,due:"2025-12-10",status:"",paidAmount:0,notes:""},
+    {id:"j12_14",name:"Fed Scapia Card",amount:28016,due:"2025-12-13",status:"Paid",paidAmount:28016,notes:""},
+    {id:"j12_15",name:"Chitti",amount:24475,due:"2025-12-15",status:"Paid",paidAmount:24475,notes:""},
+    {id:"j12_16",name:"Thakku Karatte Fees",amount:1500,due:"2025-12-15",status:"Paid",paidAmount:1500,notes:""},
+    {id:"j12_17",name:"Amex",amount:0,due:"2025-12-19",status:"",paidAmount:0,notes:""},
+    {id:"j12_18",name:"Thakku Keyboard Class",amount:2400,due:"2025-12-20",status:"",paidAmount:0,notes:""},
+  ],
+};
+
+// ── 2026 Monthly Data ──────────────────────────────────────────────
+const SEED_2026 = {
+  "2026-01": [
+    {id:"k01_01",name:"SBI Credit Card",amount:190534,due:"2025-12-31",status:"Paid",paidAmount:190534,notes:"Due Dec 31"},
+    {id:"k01_02",name:"Maid",amount:4000,due:"2026-01-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"k01_03",name:"Tution Fees",amount:2000,due:"2026-01-02",status:"Paid",paidAmount:2000,notes:""},
+    {id:"k01_04",name:"Car Wash",amount:850,due:"2026-01-02",status:"Paid",paidAmount:850,notes:""},
+    {id:"k01_05",name:"HDFC Diners Credit Card",amount:113445,due:"2026-01-02",status:"Paid",paidAmount:113445,notes:""},
+    {id:"k01_06",name:"HDFC Rupay Card",amount:41402,due:"2026-01-02",status:"Paid",paidAmount:41402,notes:""},
+    {id:"k01_07",name:"Thakku Karatte Fees",amount:1500,due:"2026-01-03",status:"Paid",paidAmount:1500,notes:""},
+    {id:"k01_08",name:"HDFC Home Loan",amount:111930,due:"2026-01-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"k01_09",name:"Kathu Etram Fees",amount:2400,due:"2026-01-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"k01_10",name:"HDFC Personal Loan",amount:34065,due:"2026-01-07",status:"Paid",paidAmount:34065,notes:""},
+    {id:"k01_11",name:"LIC 1",amount:5564,due:"2026-01-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k01_12",name:"LIC 2",amount:5564,due:"2026-01-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k01_13",name:"OneCard - SIB",amount:3951,due:"2026-01-09",status:"Paid",paidAmount:3951,notes:""},
+    {id:"k01_14",name:"Fed Scapia Card",amount:84876,due:"2026-01-13",status:"Paid",paidAmount:84876,notes:""},
+    {id:"k01_15",name:"Chitti",amount:24475,due:"2026-01-15",status:"Paid",paidAmount:24475,notes:""},
+    {id:"k01_16",name:"Thakku Keyboard Class",amount:2400,due:"2026-01-20",status:"Paid",paidAmount:2400,notes:""},
+    {id:"k01_17",name:"Kathu Ballet Fees",amount:21228,due:"2026-01-31",status:"Paid",paidAmount:21228,notes:""},
+  ],
+  "2026-02": [
+    {id:"k02_01",name:"SBI Credit Card",amount:140064,due:"2026-02-01",status:"Paid",paidAmount:140064,notes:""},
+    {id:"k02_02",name:"Maid",amount:4000,due:"2026-02-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"k02_03",name:"Tution Fees",amount:2000,due:"2026-02-02",status:"Paid",paidAmount:2000,notes:""},
+    {id:"k02_04",name:"Car Wash",amount:850,due:"2026-02-02",status:"Paid",paidAmount:850,notes:""},
+    {id:"k02_05",name:"HDFC Diners Credit Card",amount:59550,due:"2026-02-02",status:"Paid",paidAmount:59550,notes:""},
+    {id:"k02_06",name:"HDFC Rupay Card",amount:93615,due:"2026-02-03",status:"Paid",paidAmount:93615,notes:""},
+    {id:"k02_07",name:"HDFC Home Loan",amount:111930,due:"2026-02-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"k02_08",name:"Kathu Etram Fees",amount:2400,due:"2026-02-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"k02_09",name:"HDFC Personal Loan",amount:34065,due:"2026-02-07",status:"Paid",paidAmount:34065,notes:""},
+    {id:"k02_10",name:"LIC 1",amount:5564,due:"2026-02-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k02_11",name:"LIC 2",amount:5564,due:"2026-02-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k02_12",name:"OneCard - SIB",amount:6187,due:"2026-02-08",status:"Paid",paidAmount:6187,notes:""},
+    {id:"k02_13",name:"Kathu Ballet Fees",amount:0,due:"2026-02-10",status:"",paidAmount:0,notes:""},
+    {id:"k02_14",name:"Fed Scapia Card",amount:19486,due:"2026-02-12",status:"Paid",paidAmount:19486,notes:""},
+    {id:"k02_15",name:"Chitti",amount:27400,due:"2026-02-15",status:"Paid",paidAmount:27400,notes:""},
+    {id:"k02_16",name:"Thakku Karatte Fees",amount:1500,due:"2026-02-15",status:"Paid",paidAmount:1500,notes:""},
+    {id:"k02_17",name:"Amex",amount:0,due:"2026-02-19",status:"",paidAmount:0,notes:""},
+    {id:"k02_18",name:"Thakku Keyboard Class",amount:2900,due:"2026-02-20",status:"Paid",paidAmount:2900,notes:""},
+  ],
+  "2026-03": [
+    {id:"k03_01",name:"Maid",amount:4000,due:"2026-03-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"k03_02",name:"Tution Fees",amount:2000,due:"2026-03-02",status:"Paid",paidAmount:2000,notes:""},
+    {id:"k03_03",name:"Car Wash",amount:850,due:"2026-03-02",status:"Paid",paidAmount:850,notes:""},
+    {id:"k03_04",name:"SBI Credit Card",amount:111335,due:"2026-03-03",status:"Paid",paidAmount:111335,notes:""},
+    {id:"k03_05",name:"HDFC Diners Credit Card",amount:84317,due:"2026-03-05",status:"Paid",paidAmount:84317,notes:""},
+    {id:"k03_06",name:"HDFC Rupay Card",amount:125117,due:"2026-03-05",status:"Paid",paidAmount:125117,notes:""},
+    {id:"k03_07",name:"HDFC Home Loan",amount:111930,due:"2026-03-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"k03_08",name:"Kathu Etram Fees",amount:2400,due:"2026-03-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"k03_09",name:"HDFC Personal Loan",amount:34065,due:"2026-03-07",status:"Paid",paidAmount:34065,notes:""},
+    {id:"k03_10",name:"LIC 1",amount:5564,due:"2026-03-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k03_11",name:"LIC 2",amount:5564,due:"2026-03-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k03_12",name:"OneCard - SIB Credit Card",amount:4917,due:"2026-03-09",status:"Paid",paidAmount:4917,notes:""},
+    {id:"k03_13",name:"Kathu Ballet Fees",amount:0,due:"2026-03-10",status:"",paidAmount:0,notes:""},
+    {id:"k03_14",name:"Fed Scapia Credit Card",amount:28016,due:"2026-03-13",status:"Paid",paidAmount:28016,notes:""},
+    {id:"k03_15",name:"Chitti",amount:24475,due:"2026-03-15",status:"Paid",paidAmount:24475,notes:""},
+    {id:"k03_16",name:"Thakku Karatte Fees",amount:1500,due:"2026-03-15",status:"Paid",paidAmount:1500,notes:""},
+    {id:"k03_17",name:"Amex Card",amount:0,due:"2026-03-19",status:"",paidAmount:0,notes:""},
+    {id:"k03_18",name:"Thakku Keyboard Class",amount:2400,due:"2026-03-20",status:"",paidAmount:0,notes:""},
+  ],
+  "2026-04": [
+    {id:"k04_01",name:"SBI Credit Card",amount:162742,due:"2026-03-31",status:"Paid",paidAmount:162742,notes:"Due Mar 31"},
+    {id:"k04_02",name:"Maid",amount:4000,due:"2026-04-02",status:"Paid",paidAmount:4000,notes:""},
+    {id:"k04_03",name:"Tution Fees",amount:2000,due:"2026-04-02",status:"Paid",paidAmount:2000,notes:""},
+    {id:"k04_04",name:"Car Wash",amount:300,due:"2026-04-02",status:"Paid",paidAmount:300,notes:""},
+    {id:"k04_05",name:"HDFC Diners Credit Card",amount:65759,due:"2026-04-02",status:"Paid",paidAmount:65759,notes:""},
+    {id:"k04_06",name:"HDFC Rupay Card",amount:42078,due:"2026-04-02",status:"Paid",paidAmount:42078,notes:""},
+    {id:"k04_07",name:"HDFC Home Loan",amount:111930,due:"2026-04-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"k04_08",name:"Kathu Etram Fees",amount:2400,due:"2026-04-06",status:"",paidAmount:0,notes:""},
+    {id:"k04_09",name:"HDFC Personal Loan",amount:34065,due:"2026-04-07",status:"Paid",paidAmount:34065,notes:""},
+    {id:"k04_10",name:"LIC 1",amount:5564,due:"2026-04-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k04_11",name:"LIC 2",amount:5564,due:"2026-04-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k04_12",name:"OneCard - SIB Credit Card",amount:15893,due:"2026-04-08",status:"Paid",paidAmount:15893,notes:""},
+    {id:"k04_13",name:"Kathu Ballet Fees",amount:0,due:"2026-04-10",status:"",paidAmount:0,notes:""},
+    {id:"k04_14",name:"Fed Scapia Credit Card",amount:46920,due:"2026-04-12",status:"Paid",paidAmount:46920,notes:""},
+    {id:"k04_15",name:"Chitti",amount:24475,due:"2026-04-15",status:"Paid",paidAmount:24475,notes:""},
+    {id:"k04_16",name:"Thakku Karatte Fees",amount:1500,due:"2026-04-15",status:"",paidAmount:0,notes:""},
+    {id:"k04_17",name:"Amex Card",amount:0,due:"2026-04-19",status:"",paidAmount:0,notes:""},
+    {id:"k04_18",name:"Thakku Keyboard Class",amount:2400,due:"2026-04-20",status:"",paidAmount:0,notes:""},
+  ],
+  "2026-05": [
+    {id:"k05_01",name:"SBI Credit Card",amount:37652,due:"2026-05-01",status:"Paid",paidAmount:37652,notes:""},
+    {id:"k05_02",name:"Maid",amount:4000,due:"2026-05-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"k05_03",name:"Tution Fees",amount:0,due:"2026-05-02",status:"",paidAmount:0,notes:""},
+    {id:"k05_04",name:"Car Wash",amount:1200,due:"2026-05-02",status:"Paid",paidAmount:1200,notes:""},
+    {id:"k05_05",name:"HDFC Diners Credit Card",amount:48306,due:"2026-05-03",status:"Paid",paidAmount:48306,notes:""},
+    {id:"k05_06",name:"HDFC Rupay Card",amount:49318,due:"2026-05-03",status:"Paid",paidAmount:49318,notes:""},
+    {id:"k05_07",name:"HDFC Home Loan",amount:111930,due:"2026-05-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"k05_08",name:"Kathu Etram Fees",amount:2400,due:"2026-05-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"k05_09",name:"HDFC Personal Loan",amount:34065,due:"2026-05-07",status:"Paid",paidAmount:34065,notes:""},
+    {id:"k05_10",name:"LIC 1",amount:5564,due:"2026-05-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k05_11",name:"LIC 2",amount:5564,due:"2026-05-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k05_12",name:"OneCard - SIB",amount:14847,due:"2026-05-09",status:"Paid",paidAmount:14847,notes:""},
+    {id:"k05_13",name:"Kathu Ballet Fees",amount:0,due:"2026-05-10",status:"",paidAmount:0,notes:""},
+    {id:"k05_14",name:"Fed Scapia Card",amount:51996,due:"2026-05-13",status:"Paid",paidAmount:51996,notes:""},
+    {id:"k05_15",name:"Chitti",amount:27400,due:"2026-05-15",status:"Paid",paidAmount:27400,notes:""},
+    {id:"k05_16",name:"Thakku Karatte Fees",amount:0,due:"2026-05-15",status:"",paidAmount:0,notes:""},
+    {id:"k05_17",name:"Amex",amount:0,due:"2026-05-19",status:"",paidAmount:0,notes:""},
+    {id:"k05_18",name:"Thakku Keyboard Class",amount:2500,due:"2026-05-12",status:"Paid",paidAmount:2500,notes:""},
+  ],
+  "2026-06": [
+    {id:"k06_01",name:"Maid",amount:4000,due:"2026-06-01",status:"Paid",paidAmount:4000,notes:""},
+    {id:"k06_02",name:"Tution Fees",amount:2000,due:"2026-06-02",status:"Paid",paidAmount:2000,notes:""},
+    {id:"k06_03",name:"Car Wash",amount:1200,due:"2026-06-02",status:"Paid",paidAmount:1200,notes:""},
+    {id:"k06_04",name:"SBI Credit Card",amount:35558,due:"2026-06-03",status:"Paid",paidAmount:35558,notes:""},
+    {id:"k06_05",name:"HDFC Diners Credit Card",amount:147604,due:"2026-06-05",status:"Paid",paidAmount:147604,notes:""},
+    {id:"k06_06",name:"HDFC Rupay Card",amount:111212,due:"2026-06-05",status:"Paid",paidAmount:111212,notes:""},
+    {id:"k06_07",name:"HDFC Home Loan",amount:111930,due:"2026-06-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"k06_08",name:"Kathu Etram Fees",amount:2400,due:"2026-06-06",status:"Paid",paidAmount:2400,notes:""},
+    {id:"k06_09",name:"HDFC Personal Loan",amount:34065,due:"2026-06-07",status:"Paid",paidAmount:34065,notes:""},
+    {id:"k06_10",name:"LIC 1",amount:5564,due:"2026-06-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k06_11",name:"LIC 2",amount:5564,due:"2026-06-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k06_12",name:"OneCard - SIB Credit Card",amount:5495,due:"2026-06-09",status:"Paid",paidAmount:5495,notes:""},
+    {id:"k06_13",name:"Kathu Ballet Fees",amount:0,due:"2026-06-10",status:"",paidAmount:0,notes:""},
+    {id:"k06_14",name:"Fed Scapia Credit Card",amount:66843,due:"2026-06-13",status:"Paid",paidAmount:66843,notes:""},
+    {id:"k06_15",name:"Chitti",amount:28798,due:"2026-06-15",status:"",paidAmount:0,notes:""},
+    {id:"k06_16",name:"Thakku Karatte Fees",amount:0,due:"2026-06-15",status:"",paidAmount:0,notes:""},
+    {id:"k06_17",name:"Amex Card",amount:0,due:"2026-06-19",status:"",paidAmount:0,notes:""},
+    {id:"k06_18",name:"Thakku Keyboard Class",amount:0,due:"2026-06-20",status:"",paidAmount:0,notes:""},
+  ],
+  "2026-07": [
+    {id:"k07_01",name:"SBI Credit Card",amount:184300,due:"2026-07-01",status:"Partial",paidAmount:123889,notes:""},
+    {id:"k07_02",name:"Tution Fees - Nalini",amount:3000,due:"2026-07-02",status:"Paid",paidAmount:3000,notes:""},
+    {id:"k07_03",name:"Maid",amount:4500,due:"2026-07-02",status:"Paid",paidAmount:4500,notes:""},
+    {id:"k07_04",name:"Tution Fees - Anu",amount:3600,due:"2026-07-02",status:"Paid",paidAmount:3600,notes:""},
+    {id:"k07_05",name:"Car Wash",amount:1200,due:"2026-07-02",status:"Paid",paidAmount:1200,notes:""},
+    {id:"k07_06",name:"Kathu Etram Fees",amount:2400,due:"2026-07-02",status:"Paid",paidAmount:2400,notes:""},
+    {id:"k07_07",name:"HDFC Diners Credit Card",amount:111007,due:"2026-07-03",status:"Partial",paidAmount:11007,notes:""},
+    {id:"k07_08",name:"HDFC Rupay Card",amount:37396,due:"2026-07-03",status:"Paid",paidAmount:37396,notes:""},
+    {id:"k07_09",name:"CRED Personal Loan",amount:6047,due:"2026-07-03",status:"Paid",paidAmount:6047,notes:""},
+    {id:"k07_10",name:"HDFC Home Loan",amount:111930,due:"2026-07-05",status:"Paid",paidAmount:111930,notes:""},
+    {id:"k07_11",name:"HDFC Personal Loan",amount:34605,due:"2026-07-07",status:"Paid",paidAmount:34605,notes:""},
+    {id:"k07_12",name:"LIC 1",amount:5564,due:"2026-07-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k07_13",name:"LIC 2",amount:5564,due:"2026-07-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k07_14",name:"OneCard - SIB Credit Card",amount:2882,due:"2026-07-09",status:"Paid",paidAmount:2882,notes:""},
+    {id:"k07_15",name:"Fed Scapia Credit Card",amount:36042,due:"2026-07-13",status:"Paid",paidAmount:36042,notes:""},
+    {id:"k07_16",name:"Chitti",amount:28475,due:"2026-07-16",status:"Paid",paidAmount:28475,notes:""},
+    {id:"k07_17",name:"Kathu Ballet Fees",amount:21228,due:"2026-07-20",status:"Paid",paidAmount:21228,notes:""},
+    {id:"k07_18",name:"Thakku Keyboard Class",amount:0,due:"2026-07-20",status:"",paidAmount:0,notes:""},
+  ],
+  "2026-08": [
+    {id:"k08_01",name:"SBI Credit Card",amount:187235,due:"2026-07-31",status:"Paid",paidAmount:187235,notes:"Due Jul 31"},
+    {id:"k08_02",name:"Tution Fees - Nalini",amount:3000,due:"2026-08-02",status:"Paid",paidAmount:3000,notes:""},
+    {id:"k08_03",name:"Maid",amount:4500,due:"2026-08-02",status:"Paid",paidAmount:4500,notes:""},
+    {id:"k08_04",name:"Tution Fees - Anu",amount:3600,due:"2026-08-02",status:"Paid",paidAmount:3600,notes:""},
+    {id:"k08_05",name:"Car Wash",amount:1200,due:"2026-08-02",status:"Paid",paidAmount:1200,notes:""},
+    {id:"k08_06",name:"Kathu Etram Fees",amount:2400,due:"2026-08-02",status:"Paid",paidAmount:2400,notes:""},
+    {id:"k08_07",name:"HDFC Diners Credit Card",amount:187900,due:"2026-08-02",status:"Paid",paidAmount:187900,notes:""},
+    {id:"k08_08",name:"HDFC Rupay Card",amount:21004,due:"2026-08-02",status:"Paid",paidAmount:21004,notes:""},
+    {id:"k08_09",name:"BA Maintenance - Q2",amount:37096,due:"2026-08-02",status:"Paid",paidAmount:37096,notes:"Quarterly"},
+    {id:"k08_10",name:"CRED Personal Loan",amount:6047,due:"2026-08-03",status:"Paid",paidAmount:6047,notes:""},
+    {id:"k08_11",name:"HDFC Home Loan",amount:133756,due:"2026-08-05",status:"Paid",paidAmount:133756,notes:"Revised EMI"},
+    {id:"k08_12",name:"HDFC Personal Loan",amount:34605,due:"2026-08-07",status:"Paid",paidAmount:34605,notes:""},
+    {id:"k08_13",name:"LIC 1",amount:5564,due:"2026-08-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k08_14",name:"LIC 2",amount:5564,due:"2026-08-07",status:"Paid",paidAmount:5564,notes:""},
+    {id:"k08_15",name:"OneCard - SIB Credit Card",amount:6870,due:"2026-08-09",status:"",paidAmount:0,notes:""},
+    {id:"k08_16",name:"Fed Scapia Credit Card",amount:37688,due:"2026-08-12",status:"",paidAmount:0,notes:""},
+    {id:"k08_17",name:"Chitti",amount:28475,due:"2026-08-16",status:"",paidAmount:0,notes:""},
+    {id:"k08_18",name:"Kathu Ballet Fees",amount:0,due:"2026-08-20",status:"",paidAmount:0,notes:""},
+  ],
+};
+
+// ── Assets / Net Worth seed data (from Personal Ledger, May 2026) ──
+const SEED_ASSETS = [
+  // ── Investments & Savings ─────────────────────────────────────────
+  {id:"ast_01", category:"investments", name:"Provident Fund (PF)",         status:"active", value:1900028, commitment:19965,  commitFreq:"monthly",   notes:"Per payroll, monthly"},
+  {id:"ast_02", category:"investments", name:"Superannuation",              status:"active", value:1311667, commitment:12500,  commitFreq:"monthly",   notes:"15% of basic per month"},
+  {id:"ast_03", category:"investments", name:"NPS (Tier I)",                status:"active", value:690392,  commitment:59386,  commitFreq:"annual",    notes:"0.4% monthly, annual filing"},
+  {id:"ast_04", category:"investments", name:"SAP Stocks – Own",            status:"active", value:325133,  commitment:50565,  commitFreq:"monthly",   notes:"Employee purchase plan"},
+  {id:"ast_05", category:"investments", name:"SAP Stocks – Grow",           status:"active", value:15993,   commitment:0,      commitFreq:"",          notes:"Annual grant"},
+  {id:"ast_06", category:"investments", name:"SAP Stocks – Move",           status:"active", value:699401,  unvestedRSU:0,     commitment:0,      commitFreq:"one-time",  notes:"One-time transfer"},
+  {id:"ast_07", category:"investments", name:"FD – HDFC",                   status:"active", value:0,       commitment:0,      commitFreq:"one-time",  notes:"One-time deposit"},
+  {id:"ast_08", category:"investments", name:"Recurring Deposit",           status:"active", value:0,       commitment:5279,   commitFreq:"monthly",   notes:"Due 12th each month"},
+
+  // ── Property ──────────────────────────────────────────────────────
+  {id:"ast_09", category:"property",    name:"Flat – Anugraha Splendor",    status:"active", value:5000000, commitment:0,      commitFreq:"",          notes:"Possession complete"},
+
+  // ── Vehicles ─────────────────────────────────────────────────────
+  {id:"ast_10", category:"vehicles",    name:"Toyota Fortuner",             status:"active", value:5200000, commitment:65000,  commitFreq:"monthly",   notes:"4-Wheeler"},
+  {id:"ast_11", category:"vehicles",    name:"Royal Enfield",               status:"active", value:0,       commitment:0,      commitFreq:"",          notes:"2-Wheeler"},
+  {id:"ast_12", category:"vehicles",    name:"Honda Activa",                status:"sold",   value:0,       commitment:0,      commitFreq:"",          notes:"2-Wheeler – Sold"},
+
+  // ── Insurance ─────────────────────────────────────────────────────
+  {id:"ast_13", category:"insurance",   name:"LIC – Life (Soni)",           status:"active", value:131722,  sumAssured:3000000, commitment:19750,  commitFreq:"quarterly", notes:"Quarterly premium"},
+  {id:"ast_14", category:"insurance",   name:"LIC – Endowment (Nalini)",    status:"active", value:0,       sumAssured:1000000, commitment:5000,   commitFreq:"monthly",   notes:"Nominee: Sairah Susan Sajeev, 16 yr maturity"},
+  {id:"ast_15", category:"insurance",   name:"LIC – Endowment (Anu)",       status:"active", value:0,       sumAssured:1000000, commitment:5000,   commitFreq:"monthly",   notes:"Nominee: Sanah Ann Sajeev, 16 yr maturity"},
+  {id:"ast_16", category:"insurance",   name:"SBI Smart Wealth",            status:"active", value:131722,  sumAssured:0,       commitment:50000,  commitFreq:"annual",    notes:"Annual premium"},
+
+  // ── Chitti ────────────────────────────────────────────────────────
+  {id:"ast_17", category:"chitti",      name:"KSFE Pravasi Chitti",         status:"active", value:0,       commitment:27084,  commitFreq:"monthly",   notes:"Due 15th each month"},
+  {id:"ast_18", category:"chitti",      name:"KSFE Pravasi FD",             status:"active", value:240000,  commitment:0,      commitFreq:"one-time",  notes:"Fixed deposit from chitti"},
+
+  // ── Debts (Liabilities) ───────────────────────────────────────────
+  {id:"ast_19", category:"debts",       name:"Property Loan – Aditya Birla",status:"active", value:17600000,commitment:111930, commitFreq:"monthly",   notes:"Flat loan, EMI due 5th"},
+  {id:"ast_20", category:"debts",       name:"Car Loan – Maruti Brezza",    status:"closed", value:1000000, commitment:0,      commitFreq:"monthly",   notes:"Closed"},
+  {id:"ast_21", category:"debts",       name:"Cash Loan – Nishal",          status:"active", value:250000,  commitment:0,      commitFreq:"",          notes:"Details in NishalLoanEMI tab"},
+];
+
+</script>
+  <script>
+/* app.js — Finance Tracker */
+
+// ── Storage ───────────────────────────────────────────────────────
+const STORE_KEY    = 'financeTracker_v1';
+const DATA_VERSION = 4;
+
+// Safe localStorage wrapper — iOS file:// blocks storage; fall back to in-memory
+const _mem = {};
+const store = {
+  get(k)    { try { return localStorage.getItem(k); }    catch { return _mem[k] ?? null; } },
+  set(k, v) { try { localStorage.setItem(k, v); }        catch { _mem[k] = v; } },
+};
+
+function loadDB() {
+  try { const r = store.get(STORE_KEY); if (r) return JSON.parse(r); } catch {}
+  return { expenses: {}, rsu: [], templates: [], takeHome: {}, assets: [] };
+}
+function saveDB() { try { store.set(STORE_KEY, JSON.stringify(db)); } catch {} }
+
+let db = loadDB();
+
+// First-run: seed 2025 expenses and templates
+if (typeof SEED_2025 !== 'undefined' && Object.keys(db.expenses).length === 0) {
+  db.expenses = JSON.parse(JSON.stringify(SEED_2025));
+}
+if (typeof SEED_TEMPLATES !== 'undefined' && (!db.templates || db.templates.length === 0)) {
+  db.templates = JSON.parse(JSON.stringify(SEED_TEMPLATES));
+}
+if (!db.rsu) db.rsu = [];
+if (!db.takeHome) db.takeHome = {};
+if (!db.assets) db.assets = [];
+
+// Data migration: v4 adds assets
+if (!db._dataVersion || db._dataVersion < DATA_VERSION) {
+  if (typeof SEED_2026 !== 'undefined') {
+    Object.entries(SEED_2026).forEach(([k, v]) => {
+      if (!db.expenses[k] || db.expenses[k].length === 0)
+        db.expenses[k] = JSON.parse(JSON.stringify(v));
+    });
+  }
+  if (typeof SEED_RSU !== 'undefined') {
+    const existingIds = new Set((db.rsu).map(r => r.id));
+    SEED_RSU.forEach(r => {
+      if (!existingIds.has(r.id)) db.rsu.push(JSON.parse(JSON.stringify(r)));
+    });
+  }
+  if (typeof SEED_TEMPLATES !== 'undefined') {
+    db.templates = JSON.parse(JSON.stringify(SEED_TEMPLATES));
+  }
+  if (typeof SEED_TAKEHOME !== 'undefined') {
+    Object.entries(SEED_TAKEHOME).forEach(([k, v]) => {
+      if (!db.takeHome[k]) db.takeHome[k] = v;
+    });
+  }
+  if (typeof SEED_ASSETS !== 'undefined') {
+    const existingIds = new Set(db.assets.map(a => a.id));
+    SEED_ASSETS.forEach(a => {
+      if (!existingIds.has(a.id)) db.assets.push(JSON.parse(JSON.stringify(a)));
+    });
+  }
+  db._dataVersion = DATA_VERSION;
+}
+
+saveDB();
+
+// ── Helpers ───────────────────────────────────────────────────────
+function uid() { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+function fmt(n) {
+  if (!n && n !== 0) return '₹0';
+  return '₹' + Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+function fmtFull(n) {
+  if (!n) return '₹0';
+  return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
+
+function fmtWords(n) {
+  if (!n || n === 0) return '';
+  const abs = Math.abs(n);
+  if (abs >= 1e7) {
+    const cr = abs / 1e7;
+    return (cr % 1 === 0 ? cr : cr.toFixed(2).replace(/\.?0+$/, '')) + ' Crores';
+  }
+  if (abs >= 1e5) {
+    const lk = abs / 1e5;
+    return (lk % 1 === 0 ? lk : lk.toFixed(2).replace(/\.?0+$/, '')) + ' Lakhs';
+  }
+  if (abs >= 1e3) {
+    const th = abs / 1e3;
+    return (th % 1 === 0 ? th : th.toFixed(1).replace(/\.?0+$/, '')) + ' Thousand';
+  }
+  return '';
+}
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function monthKey(y, m) { return `${y}-${String(m + 1).padStart(2,'0')}`; }
+
+const today = new Date();
+let curYear  = today.getFullYear();
+let curMonth = today.getMonth();
+
+function itemStatusClass(item) {
+  if (!item.amount || item.amount === 0) return 's-zero';
+  if (item.status === 'Paid')    return 's-paid';
+  if (item.status === 'Partial') return 's-partial';
+  const due  = new Date(item.due);
+  const diff = Math.floor((due - today) / 86400000);
+  if (diff < 0)  return 's-overdue';
+  if (diff <= 5) return 's-due-soon';
+  return 's-unpaid';
+}
+
+const $ = id => document.getElementById(id);
+
+// ── Theme ─────────────────────────────────────────────────────────
+const html = document.documentElement;
+const metaTheme = document.getElementById('meta-theme-color');
+
+function applyTheme(theme) {
+  html.setAttribute('data-theme', theme);
+  const isDark = theme === 'dark';
+  if (metaTheme) metaTheme.content = isDark ? '#0d1b2a' : '#1e3a5f';
+  $('btn-theme').textContent = isDark ? '🌙' : '☀️';
+  $('btn-theme').title = isDark ? 'Switch to light theme' : 'Switch to dark theme';
+  store.set('theme', theme);
+}
+
+// Default: light theme; restore saved preference
+applyTheme(store.get('theme') || 'light');
+
+$('btn-theme').addEventListener('click', () => {
+  applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+});
+
+// ── Sidebar ───────────────────────────────────────────────────────
+const sidebar = document.getElementById('sidebar');
+const main    = document.getElementById('main');
+const edgeBtn = document.getElementById('btn-edge-toggle');
+
+function setSidebarCollapsed(collapsed) {
+  sidebar.classList.toggle('collapsed', collapsed);
+  main.classList.toggle('collapsed', collapsed);
+  store.set('sidebarCollapsed', collapsed ? '1' : '0');
+}
+
+// Both the header hamburger and the edge button toggle the same state
+$('btn-sidebar-toggle').addEventListener('click', () => {
+  setSidebarCollapsed(!sidebar.classList.contains('collapsed'));
+});
+edgeBtn.addEventListener('click', () => {
+  setSidebarCollapsed(!sidebar.classList.contains('collapsed'));
+});
+
+// Restore saved state
+setSidebarCollapsed(store.get('sidebarCollapsed') === '1');
+
+// ── Tab switching ─────────────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    $('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'summary')   renderSummary();
+    if (btn.dataset.tab === 'rsu')       renderRSU();
+    if (btn.dataset.tab === 'templates') renderTemplates();
+    if (btn.dataset.tab === 'future')    renderFuture();
+  });
+});
+
+// ── Month selectors ───────────────────────────────────────────────
+function initSelectors() {
+  const ms = $('month-select'), ys = $('year-select');
+  ms.innerHTML = MONTHS_LONG.map((m,i) =>
+    `<option value="${i}"${i===curMonth?' selected':''}>${m}</option>`).join('');
+  const years = [];
+  for (let y = 2023; y <= 2030; y++) years.push(y);
+  ys.innerHTML = years.map(y =>
+    `<option value="${y}"${y===curYear?' selected':''}>${y}</option>`).join('');
+  ms.addEventListener('change', () => { curMonth = +ms.value; renderMonthly(); });
+  ys.addEventListener('change', () => { curYear  = +ys.value; renderMonthly(); });
+}
+
+$('btn-prev').addEventListener('click', () => {
+  if (curMonth === 0) { curMonth = 11; curYear--; } else curMonth--;
+  syncSelectors(); renderMonthly();
+});
+$('btn-next').addEventListener('click', () => {
+  if (curMonth === 11) { curMonth = 0; curYear++; } else curMonth++;
+  syncSelectors(); renderMonthly();
+});
+function syncSelectors() {
+  $('month-select').value = curMonth;
+  $('year-select').value  = curYear;
+}
+
+// ── Auto-populate month from templates ───────────────────────────
+function ensureMonthPopulated(key) {
+  if (db.expenses[key] && db.expenses[key].length > 0) return;
+  const [y, m] = key.split('-').map(Number);
+  const activeTemplates = (db.templates || []).filter(t => t.active);
+  if (!activeTemplates.length) return;
+  db.expenses[key] = activeTemplates.map(t => {
+    const day   = Math.min(t.dueDay, new Date(y, m, 0).getDate()); // clamp to month length
+    const due   = `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    return {
+      id: uid(), name: t.name, amount: t.defaultAmount || 0,
+      due, status: '', paidAmount: 0, notes: ''
+    };
+  });
+  saveDB();
+}
+
+// ── Monthly render ────────────────────────────────────────────────
+function renderMonthly() {
+  const key = monthKey(curYear, curMonth);
+  ensureMonthPopulated(key);
+  const items = db.expenses[key] || [];
+
+  let total = 0, paid = 0;
+  items.forEach(it => {
+    total += it.amount || 0;
+    if (it.status === 'Paid')    paid += it.amount || 0;
+    else if (it.status === 'Partial') paid += it.paidAmount || 0;
+  });
+  const deficit = total - paid;
+  const takeHome = (db.takeHome || {})[key] || 0;
+
+  $('stat-total').textContent     = fmt(total);
+  $('stat-paid').textContent      = fmt(paid);
+  $('stat-remaining').textContent = fmt(deficit);
+  $('stat-deficit').textContent   = deficit > 0 ? fmt(deficit) : '₹0';
+
+  // Take-home strip
+  const thEl = $('stat-takehome');
+  if (thEl) thEl.textContent = takeHome ? fmt(takeHome) : '—';
+
+  const sorted = [...items].sort((a, b) => new Date(a.due) - new Date(b.due));
+  const list   = $('expense-list');
+
+  if (!sorted.length) {
+    list.innerHTML = '<div class="empty-state">No items yet. Tap "+ Add" to get started.</div>';
+    return;
+  }
+
+  list.innerHTML = sorted.map(it => {
+    const sc    = itemStatusClass(it);
+    const day   = new Date(it.due).getDate();
+    const isZero = !it.amount || it.amount === 0;
+
+    let amtHtml;
+    if (isZero) {
+      amtHtml = `<span class="item-amount item-zero">—</span>`;
+    } else if (it.status === 'Partial') {
+      const rem = (it.amount||0) - (it.paidAmount||0);
+      amtHtml = `<div class="item-amount">${fmt(it.amount)}</div>
+                 <div class="item-remaining">${fmt(rem)} left</div>`;
+    } else {
+      amtHtml = `<div class="item-amount">${fmt(it.amount)}</div>`;
+    }
+
+    let meta = it.notes || '';
+    if (!meta) {
+      const due  = new Date(it.due);
+      const diff = Math.floor((due - today) / 86400000);
+      if (sc === 's-due-soon') meta = diff === 0 ? 'Due today!' : `Due in ${diff} day${diff>1?'s':''}`;
+      if (sc === 's-overdue')  meta = `Overdue by ${Math.abs(diff)} day${Math.abs(diff)>1?'s':''}`;
+    }
+
+    // Inline pay button: show ✓ for unpaid/partial/overdue/due-soon (non-zero), ↩ for paid
+    let payBtn = '';
+    if (!isZero) {
+      if (it.status === 'Paid') {
+        payBtn = `<button class="item-pay-btn item-pay-undo" data-id="${it.id}" title="Mark unpaid">↩</button>`;
+      } else {
+        payBtn = `<button class="item-pay-btn item-pay-now" data-id="${it.id}" title="Mark as paid">✓</button>`;
+      }
+    }
+
+    return `<div class="expense-item ${sc}" data-id="${it.id}">
+      <div class="item-due-badge">${String(day).padStart(2,'0')}</div>
+      <div class="item-body">
+        <div class="item-name">${it.name}</div>
+        ${meta ? `<div class="item-meta">${meta}</div>` : ''}
+      </div>
+      <div class="item-amount-col">${amtHtml}</div>
+      ${payBtn}
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.expense-item').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.closest('.item-pay-btn')) return;
+      openExpenseModal(key, el.dataset.id);
+    });
+  });
+
+  list.querySelectorAll('.item-pay-now').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const items = db.expenses[key];
+      const it = items.find(i => i.id === btn.dataset.id);
+      if (!it) return;
+      it.status = 'Paid'; it.paidAmount = it.amount;
+      saveDB(); renderMonthly(); scheduleNotifications();
+    });
+  });
+
+  list.querySelectorAll('.item-pay-undo').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const items = db.expenses[key];
+      const it = items.find(i => i.id === btn.dataset.id);
+      if (!it) return;
+      it.status = ''; it.paidAmount = 0;
+      saveDB(); renderMonthly();
+    });
+  });
+}
+
+// ── Take-Home Save ────────────────────────────────────────────────
+function initTakeHomeSave() {
+  const inp = $('inp-takehome');
+  if (!inp) return;
+  inp.addEventListener('change', () => {
+    const key = monthKey(curYear, curMonth);
+    const val = parseFloat(inp.value) || 0;
+    if (!db.takeHome) db.takeHome = {};
+    if (val) db.takeHome[key] = val; else delete db.takeHome[key];
+    saveDB();
+    const thEl = $('stat-takehome');
+    if (thEl) thEl.textContent = val ? fmt(val) : '—';
+    inp.value = '';
+  });
+}
+
+// ── Take-Home Privacy Blur ─────────────────────────────────────────
+let thBlurTimer = null;
+
+function setTHBlur(blur) {
+  const el  = $('stat-takehome');
+  const btn = $('btn-th-reveal');
+  if (!el) return;
+  if (blur) {
+    el.classList.add('blurred');
+    el.classList.remove('revealed');
+    if (btn) btn.textContent = '👁';
+    clearTimeout(thBlurTimer);
+  } else {
+    el.classList.add('revealed');
+    el.classList.remove('blurred');
+    if (btn) btn.textContent = '🙈';
+    clearTimeout(thBlurTimer);
+    thBlurTimer = setTimeout(() => setTHBlur(true), 30000);
+  }
+}
+
+function initTHBlur() {
+  const btn = $('btn-th-reveal');
+  if (!btn) return;
+  // Start blurred
+  setTHBlur(true);
+  // Toggle button
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const isBlurred = !$('stat-takehome').classList.contains('revealed');
+    setTHBlur(!isBlurred);
+  });
+  // Tapping the value itself also reveals
+  $('stat-takehome').addEventListener('click', e => {
+    if ($('stat-takehome').classList.contains('revealed')) return;
+    e.stopPropagation();
+    setTHBlur(false);
+  });
+}
+
+// ── Expense modal ─────────────────────────────────────────────────
+let editingItemKey = null;
+
+function openExpenseModal(mKey, id) {
+  const items = db.expenses[mKey] || [];
+  const item  = id ? items.find(i => i.id === id) : null;
+  editingItemKey = id ? `${mKey}|${id}` : null;
+
+  $('modal-expense-title').textContent = item ? 'Edit Expense' : 'Add Expense';
+  $('inp-name').value   = item?.name   || '';
+  $('inp-amount').value = item?.amount || '';
+  $('inp-due').value    = item?.due    || `${curYear}-${String(curMonth+1).padStart(2,'0')}-01`;
+  $('inp-status').value = item?.status || '';
+  $('inp-paid').value   = item?.paidAmount || '';
+  $('inp-notes').value  = item?.notes  || '';
+  $('btn-delete-item').style.display = item ? '' : 'none';
+  togglePartialRow();
+  $('modal-expense').classList.remove('hidden');
+  setTimeout(() => $('inp-name').focus(), 50);
+}
+
+$('btn-add-item').addEventListener('click', () => openExpenseModal(monthKey(curYear, curMonth), null));
+
+$('inp-status').addEventListener('change', togglePartialRow);
+function togglePartialRow() {
+  $('partial-row').classList.toggle('hidden', $('inp-status').value !== 'Partial');
+}
+
+$('form-expense').addEventListener('submit', e => {
+  e.preventDefault();
+  const mKey = editingItemKey ? editingItemKey.split('|')[0] : monthKey(curYear, curMonth);
+  if (!db.expenses[mKey]) db.expenses[mKey] = [];
+  const items = db.expenses[mKey];
+
+  const entry = {
+    name: $('inp-name').value.trim(),
+    amount: parseFloat($('inp-amount').value) || 0,
+    due: $('inp-due').value,
+    status: $('inp-status').value,
+    paidAmount: parseFloat($('inp-paid').value) || 0,
+    notes: $('inp-notes').value.trim(),
+  };
+
+  if (editingItemKey) {
+    const id  = editingItemKey.split('|')[1];
+    const idx = items.findIndex(i => i.id === id);
+    if (idx >= 0) items[idx] = { ...items[idx], ...entry };
+  } else {
+    items.push({ id: uid(), ...entry });
+  }
+
+  saveDB(); closeModal('modal-expense'); renderMonthly();
+  scheduleNotifications();
+});
+
+$('btn-delete-item').addEventListener('click', () => {
+  if (!editingItemKey || !confirm('Delete this item?')) return;
+  const [mKey, id] = editingItemKey.split('|');
+  db.expenses[mKey] = (db.expenses[mKey]||[]).filter(i => i.id !== id);
+  saveDB(); closeModal('modal-expense'); renderMonthly();
+});
+
+// ── Templates ─────────────────────────────────────────────────────
+function renderTemplates() {
+  const tmps = db.templates || [];
+  const sorted = [...tmps].sort((a,b) => a.dueDay - b.dueDay);
+  const list = $('template-list');
+
+  if (!sorted.length) {
+    list.innerHTML = '<div class="empty-state">No templates yet. Add one to auto-populate new months.</div>';
+    return;
+  }
+
+  list.innerHTML = sorted.map(t => `
+    <div class="template-item ${t.active ? '' : 'inactive'}" data-id="${t.id}">
+      <div class="tpl-day">${String(t.dueDay).padStart(2,'0')}</div>
+      <div class="tpl-body">
+        <div class="tpl-name">${t.name}${t.code ? ` <span class="tpl-code">${t.code}</span>` : ''}</div>
+        <div class="tpl-meta">Due on day ${t.dueDay} of each month</div>
+      </div>
+      <span class="tpl-badge ${t.active ? 'active' : 'inactive'}">${t.active ? 'Active' : 'Inactive'}</span>
+      <div class="tpl-amount">${t.defaultAmount ? fmt(t.defaultAmount) : '—'}</div>
+      <div class="tpl-actions">
+        <button class="tpl-action-btn tpl-toggle"
+          data-id="${t.id}"
+          data-tooltip="${t.active ? 'Deactivate' : 'Activate'}"
+          title="${t.active ? 'Deactivate' : 'Activate'}">
+          ${t.active ? '⏸' : '▶'}
+        </button>
+        <button class="tpl-action-btn tpl-delete"
+          data-id="${t.id}"
+          data-tooltip="Delete"
+          title="Delete">
+          🗑
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.template-item').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.closest('.tpl-action-btn')) return;
+      openTemplateModal(el.dataset.id);
+    });
+  });
+
+  list.querySelectorAll('.tpl-toggle').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const tpl = (db.templates||[]).find(t => t.id === btn.dataset.id);
+      if (!tpl) return;
+      tpl.active = !tpl.active;
+      saveDB(); renderTemplates();
+    });
+  });
+
+  list.querySelectorAll('.tpl-delete').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      if (!confirm(`Delete template "${(db.templates||[]).find(t=>t.id===btn.dataset.id)?.name}"? Existing monthly entries are unaffected.`)) return;
+      db.templates = (db.templates||[]).filter(t => t.id !== btn.dataset.id);
+      saveDB(); renderTemplates();
+    });
+  });
+}
+
+let editingTplId = null;
+
+function openTemplateModal(id) {
+  const tpl = id ? (db.templates||[]).find(t => t.id === id) : null;
+  editingTplId = id || null;
+  $('modal-tpl-title').textContent = tpl ? 'Edit Template' : 'Add Template';
+  $('tpl-code').value   = tpl?.code          || '';
+  $('tpl-name').value   = tpl?.name          || '';
+  $('tpl-amount').value = tpl?.defaultAmount || '';
+  $('tpl-day').value    = tpl?.dueDay        || '';
+  $('tpl-active').value = tpl ? String(tpl.active) : 'true';
+  $('btn-delete-template').style.display = tpl ? '' : 'none';
+  $('modal-template').classList.remove('hidden');
+  setTimeout(() => $('tpl-name').focus(), 50);
+}
+
+$('btn-add-template').addEventListener('click', () => openTemplateModal(null));
+
+$('form-template').addEventListener('submit', e => {
+  e.preventDefault();
+  if (!db.templates) db.templates = [];
+  const entry = {
+    code: $('tpl-code').value.trim().toUpperCase(),
+    name: $('tpl-name').value.trim(),
+    defaultAmount: parseFloat($('tpl-amount').value) || 0,
+    dueDay: parseInt($('tpl-day').value) || 1,
+    active: $('tpl-active').value === 'true',
+  };
+  if (editingTplId) {
+    const idx = db.templates.findIndex(t => t.id === editingTplId);
+    if (idx >= 0) db.templates[idx] = { ...db.templates[idx], ...entry };
+  } else {
+    db.templates.push({ id: uid(), ...entry });
+  }
+  saveDB(); closeModal('modal-template'); renderTemplates();
+});
+
+$('btn-delete-template').addEventListener('click', () => {
+  if (!editingTplId || !confirm('Delete this template? Existing monthly entries are unaffected.')) return;
+  db.templates = (db.templates||[]).filter(t => t.id !== editingTplId);
+  saveDB(); closeModal('modal-template'); renderTemplates();
+});
+
+// ── RSU ───────────────────────────────────────────────────────────
+function renderRSU() {
+  const allSales = db.rsu || [];
+  const allYears = [...new Set(allSales.map(r => r.date.slice(0,4)))].sort().reverse();
+  if (!allYears.length) allYears.push(String(today.getFullYear()));
+
+  const rsuYearSel = $('rsu-year-select');
+  const prevVal    = rsuYearSel.value;
+  rsuYearSel.innerHTML = allYears.map(y =>
+    `<option value="${y}"${y === (prevVal || allYears[0]) ? ' selected' : ''}>${y}</option>`
+  ).join('');
+
+  doRenderRSU(rsuYearSel.value || allYears[0]);
+  rsuYearSel.onchange = () => doRenderRSU(rsuYearSel.value);
+}
+
+function doRenderRSU(year) {
+  const sales = [...(db.rsu||[])]
+    .filter(r => r.date.slice(0,4) === String(year))
+    .sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  const totProceeds = sales.reduce((s,r) => s + (r.proceeds||0), 0);
+  const avgPerSale  = sales.length ? Math.round(totProceeds / sales.length) : 0;
+  const bestSale    = sales.reduce((best,r) => (r.proceeds||0) > (best?.proceeds||0) ? r : best, null);
+
+  // Prior year comparison
+  const prevYear    = String(+year - 1);
+  const prevSales   = (db.rsu||[]).filter(r => r.date.slice(0,4) === prevYear);
+  const prevTotal   = prevSales.reduce((s,r) => s + (r.proceeds||0), 0);
+  const yoyDiff     = totProceeds - prevTotal;
+  const yoyPct      = prevTotal ? Math.round((yoyDiff / prevTotal) * 100) : null;
+
+  const yoyHtml = prevTotal
+    ? `<div class="stat-card">
+        <div class="stat-label">vs ${prevYear}</div>
+        <div class="stat-value" style="color:${yoyDiff>=0?'var(--green)':'var(--red)'}">
+          ${yoyDiff>=0?'+':''}${fmt(yoyDiff)}<span style="font-size:12px;font-weight:500;margin-left:4px">(${yoyDiff>=0?'+':''}${yoyPct}%)</span>
+        </div>
+       </div>` : '';
+
+  $('rsu-summary').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Total Proceeds ${year}</div>
+      <div class="stat-value" style="color:var(--purple)">${fmtFull(totProceeds)}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg per Sale</div>
+      <div class="stat-value">${avgPerSale ? fmt(avgPerSale) : '—'}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Best Month</div>
+      <div class="stat-value" style="color:var(--green)">${bestSale ? fmt(bestSale.proceeds) : '—'}</div>
+      ${bestSale ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${bestSale.date.slice(0,7)}</div>` : ''}
+    </div>
+    ${yoyHtml}
+  `;
+
+  if (!sales.length) {
+    $('rsu-list').innerHTML = `<div class="empty-state">No RSU sales for ${year}.</div>`;
+    return;
+  }
+
+  // Relative bar scale
+  const maxProceeds = Math.max(...sales.map(r => r.proceeds||0), 1);
+
+  $('rsu-list').innerHTML = sales.map(r => {
+    const barW      = Math.round(((r.proceeds||0) / maxProceeds) * 100);
+    const priceStr  = r.price  ? `@ ₹${Number(r.price).toLocaleString('en-IN',{maximumFractionDigits:2})} / share` : '';
+    const sharesStr = r.shares ? `${r.shares} shares` : '';
+    const subLine   = [sharesStr, priceStr].filter(Boolean).join(' · ');
+    return `
+    <div class="rsu-item" data-id="${r.id}">
+      <div class="rsu-row">
+        <span class="rsu-name">${r.company || 'RSU Sale'}</span>
+        <span class="rsu-fig-val purple" style="font-size:15px;font-weight:700">${fmtFull(r.proceeds)}</span>
+      </div>
+      <div class="rsu-row" style="margin-top:3px">
+        <span class="rsu-date">${r.date}${subLine ? ' · ' + subLine : ''}</span>
+        ${r.notes ? `<span style="font-size:11px;color:var(--text-muted)">${r.notes}</span>` : ''}
+      </div>
+      <div style="margin-top:7px;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${barW}%;background:var(--purple);border-radius:3px;transition:width 0.4s"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  $('rsu-list').querySelectorAll('.rsu-item').forEach(el => {
+    el.addEventListener('click', () => openRsuModal(el.dataset.id));
+  });
+}
+
+let editingRsuId = null;
+function openRsuModal(id) {
+  const sale = id ? (db.rsu||[]).find(r => r.id === id) : null;
+  editingRsuId = id || null;
+  $('modal-rsu-title').textContent = sale ? 'Edit RSU Sale' : 'Add RSU Sale';
+  $('rsu-date').value     = sale?.date    || today.toISOString().slice(0,10);
+  $('rsu-company').value  = sale?.company || '';
+  $('rsu-shares').value   = sale?.shares  || '';
+  $('rsu-price').value    = sale?.price   || '';
+  $('rsu-proceeds').value = sale?.proceeds|| '';
+  $('rsu-notes').value    = sale?.notes   || '';
+  $('btn-delete-rsu').style.display = sale ? '' : 'none';
+  $('modal-rsu').classList.remove('hidden');
+}
+$('btn-add-rsu').addEventListener('click', () => openRsuModal(null));
+
+['rsu-shares','rsu-price'].forEach(id => {
+  $(id).addEventListener('input', () => {
+    const s = parseFloat($('rsu-shares').value)||0;
+    const p = parseFloat($('rsu-price').value)||0;
+    if (s && p) $('rsu-proceeds').value = (s*p).toFixed(2);
+  });
+});
+
+$('form-rsu').addEventListener('submit', e => {
+  e.preventDefault();
+  if (!db.rsu) db.rsu = [];
+  const entry = {
+    id:       editingRsuId || uid(),
+    date:     $('rsu-date').value,
+    company:  $('rsu-company').value.trim(),
+    shares:   parseFloat($('rsu-shares').value)   || 0,
+    price:    parseFloat($('rsu-price').value)    || 0,
+    proceeds: parseFloat($('rsu-proceeds').value) || 0,
+    notes:    $('rsu-notes').value.trim(),
+  };
+  if (editingRsuId) {
+    const idx = db.rsu.findIndex(r => r.id === editingRsuId);
+    if (idx >= 0) db.rsu[idx] = entry; else db.rsu.push(entry);
+  } else {
+    db.rsu.push(entry);
+  }
+  saveDB(); closeModal('modal-rsu'); renderRSU();
+});
+
+$('btn-delete-rsu').addEventListener('click', () => {
+  if (!editingRsuId || !confirm('Delete this RSU sale?')) return;
+  db.rsu = (db.rsu||[]).filter(r => r.id !== editingRsuId);
+  saveDB(); closeModal('modal-rsu'); renderRSU();
+});
+
+// ── Summary ───────────────────────────────────────────────────────
+function renderSummary() {
+  const sy = $('summary-year-select');
+  const years = [...new Set(Object.keys(db.expenses).map(k => k.split('-')[0]))].sort();
+  if (!years.length) years.push(String(today.getFullYear()));
+  const selYear = sy.value || String(curYear);
+  sy.innerHTML = years.map(y => `<option value="${y}"${y===selYear?' selected':''}>${y}</option>`).join('');
+  doRenderSummary(selYear);
+  sy.onchange = () => doRenderSummary(sy.value);
+}
+
+// ── Trend chart (inline SVG, no deps) ────────────────────────────
+function fmtShort(n) {
+  if (n >= 1e7) return (n/1e7).toFixed(1).replace(/\.0$/,'') + 'Cr';
+  if (n >= 1e5) return (n/1e5).toFixed(1).replace(/\.0$/,'') + 'L';
+  if (n >= 1e3) return Math.round(n/1e3) + 'K';
+  return String(Math.round(n));
+}
+
+function buildTrendChart(monthData, maxVal) {
+  const W=740, H=216, PL=50, PR=10, PT=28, PB=32;
+  const cW = W - PL - PR;
+  const cH = H - PT - PB;
+  const slotW = cW / 12;
+  const bW = 10;
+
+  const bg = [], expBars = [], thBars = [], rsuBars = [];
+  const expLine = [], thLine = [], paidLine = [];
+
+  // Background + gridlines
+  bg.push(`<rect x="${PL}" y="${PT}" width="${cW}" height="${cH}" fill="var(--surface2)" rx="4" opacity="0.5"/>`);
+  [0.25, 0.5, 0.75, 1.0].forEach(f => {
+    const y = +(PT + cH * (1 - f)).toFixed(1);
+    bg.push(`<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="var(--border)" stroke-width="${f===1?'1':'0.7'}" stroke-dasharray="${f===1?'':'4,3'}"/>`);
+    bg.push(`<text x="${PL-5}" y="${y+4}" text-anchor="end" font-size="9" fill="var(--text-muted)" font-family="monospace">${fmtShort(maxVal*f)}</text>`);
+  });
+
+  const trendPts = [], thPts = [], paidPts = [];
+  monthData.forEach((d, i) => {
+    const cx = +(PL + i * slotW + slotW / 2).toFixed(1);
+
+    if (d.total > 0) {
+      const bH = +((d.total / maxVal) * cH).toFixed(1);
+      const bY = +(PT + cH - bH).toFixed(1);
+      const bX = +(cx - bW * 1.6).toFixed(1);
+      expBars.push(`<rect class="chart-bar-cl" data-key="${d.key}" x="${bX}" y="${bY}" width="${bW}" height="${bH}" fill="var(--blue)" rx="2" opacity="0.82"><title>${d.m}: ${fmt(d.total)}</title></rect>`);
+      trendPts.push({ x: +(bX + bW/2).toFixed(1), y: bY });
+    }
+    if (d.takeHome > 0) {
+      const bH = +((d.takeHome / maxVal) * cH).toFixed(1);
+      const bY = +(PT + cH - bH).toFixed(1);
+      const bX = +(cx - bW * 0.5).toFixed(1);
+      thBars.push(`<rect class="chart-bar-cl" data-key="${d.key}" x="${bX}" y="${bY}" width="${bW}" height="${bH}" fill="var(--green)" rx="2" opacity="0.78"><title>${d.m} TH: ${fmt(d.takeHome)}</title></rect>`);
+      thPts.push({ x: +(bX + bW/2).toFixed(1), y: bY });
+    }
+    if (d.rsuIncome > 0) {
+      const bH = +((d.rsuIncome / maxVal) * cH).toFixed(1);
+      const bY = +(PT + cH - bH).toFixed(1);
+      const bX = +(cx + bW * 0.6).toFixed(1);
+      rsuBars.push(`<rect class="chart-bar-cl" data-key="${d.key}" x="${bX}" y="${bY}" width="${bW}" height="${bH}" fill="var(--purple)" rx="2" opacity="0.75"><title>${d.m} RSU: ${fmt(d.rsuIncome)}</title></rect>`);
+    }
+    if (d.paid > 0 && d.total > 0) {
+      paidPts.push({ x: cx, y: +(PT + cH - (d.paid / maxVal) * cH).toFixed(1) });
+    }
+    bg.push(`<text x="${cx}" y="${H - PB + 16}" text-anchor="middle" font-size="10" fill="var(--text-muted)">${d.m}</text>`);
+  });
+
+  bg.push(`<line x1="${PL}" y1="${PT+cH}" x2="${W-PR}" y2="${PT+cH}" stroke="var(--border)" stroke-width="1"/>`);
+
+  if (trendPts.length >= 2) {
+    expLine.push(`<path d="${trendPts.map((p,i)=>`${i?'L':'M'}${p.x},${p.y}`).join(' ')}" fill="none" stroke="var(--blue)" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.6"/>`);
+    trendPts.forEach(p => expLine.push(`<circle cx="${p.x}" cy="${p.y}" r="2.5" fill="var(--blue)" opacity="0.75"/>`));
+  }
+  if (thPts.length >= 2) {
+    thLine.push(`<path d="${thPts.map((p,i)=>`${i?'L':'M'}${p.x},${p.y}`).join(' ')}" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.7"/>`);
+    thPts.forEach(p => thLine.push(`<circle cx="${p.x}" cy="${p.y}" r="2.5" fill="var(--green)" opacity="0.85"/>`));
+  }
+  if (paidPts.length >= 2) {
+    paidLine.push(`<path d="${paidPts.map((p,i)=>`${i?'L':'M'}${p.x},${p.y}`).join(' ')}" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" opacity="0.8"/>`);
+    paidPts.forEach(p => paidLine.push(`<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--green)" opacity="0.9"/>`));
+  }
+
+  // Legend (interactive)
+  const legends = [
+    { key:'expenses',  color:'var(--blue)',   label:'Expenses'  },
+    { key:'takehome',  color:'var(--green)',  label:'Take-Home' },
+    { key:'rsu',       color:'var(--purple)', label:'RSU'       },
+  ];
+  const legParts = [`<g transform="translate(${PL},10)">`];
+  let lx = 0;
+  legends.forEach(l => {
+    legParts.push(`<g data-legend="${l.key}" style="cursor:pointer">
+      <rect x="${lx}" y="1" width="10" height="10" fill="${l.color}" rx="2" opacity="0.82"/>
+      <text x="${lx+14}" y="10" font-size="10" fill="var(--text-muted)">${l.label}</text>
+    </g>`);
+    lx += l.label.length * 6.5 + 22;
+  });
+  legParts.push('</g>');
+
+  const svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;overflow:visible">
+    ${bg.join('')}
+    <g data-series="expenses">${expBars.join('')}${expLine.join('')}</g>
+    <g data-series="takehome">${thBars.join('')}${thLine.join('')}</g>
+    <g data-series="rsu">${rsuBars.join('')}</g>
+    ${legParts.join('')}
+  </svg>`;
+  return svg;
+}
+
+function doRenderSummary(year) {
+  let annualTotal = 0, annualPaid = 0, annualRSU = 0, annualTakeHome = 0;
+
+  const monthData = MONTHS.map((m, mi) => {
+    const key   = `${year}-${String(mi+1).padStart(2,'0')}`;
+    const isFuture = (+year > curYear) || (+year === curYear && mi > curMonth);
+
+    let total = 0, paid = 0;
+    if (!isFuture) {
+      const items = db.expenses[key] || [];
+      items.forEach(it => {
+        total += it.amount || 0;
+        if (it.status === 'Paid')         paid += it.amount || 0;
+        else if (it.status === 'Partial') paid += it.paidAmount || 0;
+      });
+    }
+    const rsuIncome  = (db.rsu||[])
+      .filter(r => r.date.slice(0,7) === key)
+      .reduce((s,r) => s + (r.proceeds||0), 0);
+    const takeHome = isFuture ? 0 : ((db.takeHome||{})[key] || 0);
+    const totalIncome = takeHome + rsuIncome;
+
+    annualTotal += total; annualPaid += paid;
+    annualRSU += rsuIncome; annualTakeHome += takeHome;
+    return { m, mi, key, total, paid, deficit: total - paid, rsuIncome, takeHome, totalIncome };
+  });
+
+  const annualIncome  = annualTakeHome + annualRSU;
+  const maxTotal      = Math.max(...monthData.map(d => Math.max(d.total, d.totalIncome)), 1);
+  const annualNetPos  = annualIncome - annualTotal;
+  const annualPaidPct = annualTotal ? Math.round((annualPaid / annualTotal) * 100) : 0;
+
+  // Months with data only
+  const activeMonths = monthData.filter(d => d.total > 0);
+  const highMonth  = activeMonths.reduce((h,d) => d.total > (h?.total||0) ? d : h, null);
+  const lowMonth   = activeMonths.reduce((l,d) => d.total < (l?.total||Infinity) ? d : l, null);
+
+  const insightsHtml = activeMonths.length >= 2 ? `
+    <div class="summary-insights">
+      <div class="insight-chip insight-high">
+        <span class="insight-icon">📈</span>
+        <span>Highest: <strong>${highMonth.m}</strong> — ${fmt(highMonth.total)}</span>
+      </div>
+      <div class="insight-chip insight-low">
+        <span class="insight-icon">📉</span>
+        <span>Lowest: <strong>${lowMonth.m}</strong> — ${fmt(lowMonth.total)}</span>
+      </div>
+      <div class="insight-chip">
+        <span class="insight-icon">✅</span>
+        <span>Overall settled: <strong>${annualPaidPct}%</strong> of annual spend</span>
+      </div>
+      ${annualIncome > 0 ? `<div class="insight-chip insight-rsu">
+        <span class="insight-icon">💚</span>
+        <span>Take-Home covers <strong>${Math.round((annualTakeHome/annualTotal)*100)}%</strong> · RSU covers <strong>${Math.round((annualRSU/annualTotal)*100)}%</strong> · Combined <strong>${Math.round((annualIncome/annualTotal)*100)}%</strong> of expenses</span>
+      </div>` : ''}
+    </div>` : '';
+
+  $('summary-content').innerHTML = `
+    <div class="annual-stats">
+      <div class="annual-stat">
+        <div class="annual-stat-label">Annual Expenses</div>
+        <div class="annual-stat-value">${fmt(annualTotal)}</div>
+      </div>
+      <div class="annual-stat">
+        <div class="annual-stat-label">Take-Home Income</div>
+        <div class="annual-stat-value" style="color:var(--green)">${fmt(annualTakeHome)}</div>
+      </div>
+      <div class="annual-stat">
+        <div class="annual-stat-label">RSU Income</div>
+        <div class="annual-stat-value" style="color:var(--purple)">${fmt(annualRSU)}</div>
+      </div>
+      <div class="annual-stat">
+        <div class="annual-stat-label">Net Position</div>
+        <div class="annual-stat-value" style="color:${annualNetPos>=0?'var(--green)':'var(--red)'}">
+          ${annualNetPos>=0?'+':'−'}${fmt(Math.abs(annualNetPos))}
+        </div>
+      </div>
+    </div>
+    ${insightsHtml}
+    <div class="summary-section-title" style="margin-top:16px">Monthly Trend</div>
+    <div class="trend-chart-wrap">${buildTrendChart(monthData, maxTotal)}</div>
+    <div class="summary-section-title" style="margin-top:16px">Month-by-Month Breakdown</div>
+    ${monthData.map((d, idx) => {
+      const barDue    = d.total       ? Math.round((d.total        / maxTotal) * 100) : 0;
+      const barPaid   = d.total       ? Math.round((d.paid         / maxTotal) * 100) : 0;
+      const barRSU    = d.rsuIncome   ? Math.round((d.rsuIncome    / maxTotal) * 100) : 0;
+      const barTH     = d.takeHome    ? Math.round((d.takeHome     / maxTotal) * 100) : 0;
+      const paidPct   = d.total       ? Math.round((d.paid         / d.total)  * 100) : 0;
+      const hasDeficit = d.deficit > 1;
+      const hasSurplus = d.deficit < -1;
+      const nothingYet = d.total === 0;
+
+      // Trend vs previous active month
+      const prevActive = monthData.slice(0, idx).reverse().find(p => p.total > 0);
+      let trendHtml = '';
+      if (prevActive && d.total > 0) {
+        const diff = d.total - prevActive.total;
+        const pct  = Math.round(Math.abs(diff) / prevActive.total * 100);
+        trendHtml = diff > 0
+          ? `<span class="smr-trend up">▲ ${pct}%</span>`
+          : `<span class="smr-trend down">▼ ${pct}%</span>`;
+      }
+
+      const deficitBadge = hasDeficit
+        ? `<span style="font-size:11px;color:var(--red);font-weight:600">−${fmt(d.deficit)}</span>`
+        : hasSurplus
+        ? `<span style="font-size:11px;color:var(--green);font-weight:600">+${fmt(Math.abs(d.deficit))}</span>`
+        : '';
+
+      return `<div class="smr" data-key="${d.key}">
+        <div class="smr-collapsed">
+          <div class="smr-month">${d.m}</div>
+          <div class="smr-collapsed-total">${nothingYet ? '—' : fmt(d.total)}</div>
+          <div class="smr-collapsed-right">
+            ${deficitBadge}
+            ${trendHtml}
+            <span class="smr-chevron">▼</span>
+          </div>
+        </div>
+        <div class="smr-detail">
+          <div class="smr-bars">
+            <div class="smr-bar-row">
+              <span class="smr-bar-label">Exp</span>
+              <div class="smr-bar-track"><div class="smr-bar-fill due" style="width:${barDue}%"></div></div>
+            </div>
+            <div class="smr-bar-row">
+              <span class="smr-bar-label">Paid</span>
+              <div class="smr-bar-track"><div class="smr-bar-fill paid" style="width:${barPaid}%"></div></div>
+            </div>
+            <div class="smr-bar-row">
+              <span class="smr-bar-label">TH</span>
+              <div class="smr-bar-track"><div class="smr-bar-fill" style="width:${barTH}%;background:var(--green)"></div></div>
+            </div>
+            <div class="smr-bar-row">
+              <span class="smr-bar-label">RSU</span>
+              <div class="smr-bar-track"><div class="smr-bar-fill" style="width:${barRSU}%;background:var(--purple)"></div></div>
+            </div>
+          </div>
+          <div class="smr-detail-stats">
+            <div class="smr-detail-stat">Paid <strong>${fmt(d.paid)}</strong> <span class="smr-paid-pct">(${paidPct}%)</span></div>
+            ${d.takeHome  ? `<div class="smr-detail-stat">TH <strong style="color:var(--green)">${fmt(d.takeHome)}</strong></div>`   : ''}
+            ${d.rsuIncome ? `<div class="smr-detail-stat">RSU <strong style="color:var(--purple)">${fmt(d.rsuIncome)}</strong></div>` : ''}
+          </div>
+          ${hasDeficit ? `
+            <div class="smr-deficit">
+              <span class="smr-deficit-label">Deficit</span>
+              <span class="smr-deficit-note">${paidPct}% settled — ${fmt(d.paid)} of ${fmt(d.total)} paid</span>
+              <span class="smr-deficit-val">−${fmt(d.deficit)}</span>
+            </div>` : ''}
+          ${hasSurplus ? `
+            <div class="smr-surplus-row">
+              <span class="smr-deficit-label">Surplus</span>
+              <span class="smr-deficit-note">Fully paid + overpaid</span>
+              <span class="smr-surplus-val">+${fmt(Math.abs(d.deficit))}</span>
+            </div>` : ''}
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+
+  // Interactive legend toggles — click to solo a series, click again to restore all
+  const seriesState = { expenses: true, takehome: true, rsu: true };
+  const legendEls = {};
+  $('summary-content').querySelectorAll('[data-legend]').forEach(el => {
+    legendEls[el.dataset.legend] = el;
+  });
+
+  function applySeriesVisibility() {
+    Object.keys(seriesState).forEach(key => {
+      const group = $('summary-content').querySelector(`[data-series="${key}"]`);
+      if (group) group.style.display = seriesState[key] ? '' : 'none';
+      if (legendEls[key]) legendEls[key].style.opacity = seriesState[key] ? '1' : '0.35';
+    });
+  }
+
+  Object.keys(legendEls).forEach(key => {
+    legendEls[key].addEventListener('click', () => {
+      const allOn = Object.values(seriesState).every(v => v);
+      if (allOn) {
+        // Solo: hide all others
+        Object.keys(seriesState).forEach(k => { seriesState[k] = k === key; });
+      } else if (seriesState[key]) {
+        // Already soloed — restore all
+        Object.keys(seriesState).forEach(k => { seriesState[k] = true; });
+      } else {
+        // Switch solo to this series
+        Object.keys(seriesState).forEach(k => { seriesState[k] = k === key; });
+      }
+      applySeriesVisibility();
+    });
+  });
+
+  $('summary-content').querySelectorAll('.smr').forEach(el => {
+    el.addEventListener('click', e => {
+      // Clicking chart bars still navigates
+      if (e.target.closest('.chart-bar-cl')) return;
+      el.classList.toggle('expanded');
+    });
+  });
+  $('summary-content').querySelectorAll('.chart-bar-cl').forEach(el => {
+    el.addEventListener('click', () => {
+      const [y, m] = el.dataset.key.split('-');
+      curYear = +y; curMonth = +m - 1;
+      syncSelectors();
+      document.querySelector('.nav-item[data-tab="monthly"]').click();
+    });
+  });
+}
+
+// ── Future (Assets & Net Worth) ───────────────────────────────────
+const ASSET_CATEGORIES = [
+  { key: 'investments', label: 'Investments & Savings', icon: '💰' },
+  { key: 'property',    label: 'Property',              icon: '🏠' },
+  { key: 'vehicles',    label: 'Vehicles',              icon: '🚗' },
+  { key: 'insurance',   label: 'Insurance',             icon: '🛡' },
+  { key: 'chitti',      label: 'Chitti',                icon: '🎰' },
+  { key: 'debts',       label: 'Debts & Liabilities',   icon: '📋' },
+];
+
+function renderFuture() {
+  const assets = db.assets || [];
+
+  // Totals
+  const totalAssets   = assets.filter(a => a.category !== 'debts' && a.category !== 'insurance' && a.status !== 'sold').reduce((s,a) => s + (a.value||0), 0);
+  const totalDebts    = assets.filter(a => a.category === 'debts'  && a.status !== 'closed').reduce((s,a) => s + (a.value||0), 0);
+  const netWorth      = totalAssets - totalDebts;
+  const monthlyOut    = assets.filter(a => a.commitFreq === 'monthly' && a.status === 'active').reduce((s,a) => s + (a.commitment||0), 0);
+
+  const nwColor = netWorth >= 0 ? 'var(--green)' : 'var(--red)';
+
+  $('future-content').innerHTML = `
+    <div class="annual-stats" style="margin-bottom:16px">
+      <div class="annual-stat">
+        <div class="annual-stat-label">Total Assets</div>
+        <div class="annual-stat-value" style="color:var(--green)">${fmt(totalAssets)}</div>
+        <div class="fig-words">${fmtWords(totalAssets)}</div>
+      </div>
+      <div class="annual-stat">
+        <div class="annual-stat-label">Total Debts</div>
+        <div class="annual-stat-value" style="color:var(--red)">${fmt(totalDebts)}</div>
+        <div class="fig-words">${fmtWords(totalDebts)}</div>
+      </div>
+      <div class="annual-stat">
+        <div class="annual-stat-label">Net Worth</div>
+        <div class="annual-stat-value" style="color:${nwColor}">${netWorth>=0?'+':'−'}${fmt(Math.abs(netWorth))}</div>
+        <div class="fig-words">${fmtWords(Math.abs(netWorth))}</div>
+      </div>
+      <div class="annual-stat">
+        <div class="annual-stat-label">Monthly Outflow</div>
+        <div class="annual-stat-value">${fmt(monthlyOut)}</div>
+        <div class="fig-words">${fmtWords(monthlyOut)}</div>
+      </div>
+    </div>
+    ${ASSET_CATEGORIES.map(cat => {
+      const items = assets.filter(a => a.category === cat.key);
+      if (!items.length) return '';
+      const catTotal = items.filter(a => a.status !== 'sold' && a.status !== 'closed').reduce((s,a) => s + (a.value||0), 0);
+      const isDebt   = cat.key === 'debts';
+      return `
+        <div class="asset-category" data-cat="${cat.key}">
+          <div class="asset-cat-header">
+            <span class="asset-cat-icon">${cat.icon}</span>
+            <span class="asset-cat-label">${cat.label} <span class="asset-cat-count">${items.length}</span></span>
+            <span class="asset-cat-total" style="color:${isDebt?'var(--red)':'var(--text)'}">
+              ${catTotal ? fmt(catTotal) : '—'}
+              ${catTotal ? `<span class="fig-words">${fmtWords(catTotal)}</span>` : ''}
+            </span>
+            <span class="asset-cat-chevron">▼</span>
+          </div>
+          <div class="asset-cat-body">
+            ${items.map(a => {
+              const statusCls = a.status === 'active' ? 'ast-active' : a.status === 'sold' ? 'ast-sold' : 'ast-closed';
+              const commitStr = a.commitment
+                ? `${fmt(a.commitment)} / ${a.commitFreq}`
+                : a.commitFreq === 'one-time' ? 'One-time' : '';
+              return `
+                <div class="asset-item ${statusCls}" data-id="${a.id}">
+                  <div class="asset-item-body">
+                    <div class="asset-item-name">${a.name}</div>
+                    ${a.notes ? `<div class="asset-item-notes">${a.notes}</div>` : ''}
+                    ${commitStr ? `<div class="asset-item-commit">${commitStr}</div>` : ''}
+                    ${a.category === 'investments' && a.unvestedRSU ? `<div style="font-size:11px;color:var(--purple);margin-top:3px">Unvested RSU: ${fmt(a.unvestedRSU)} <span class="fig-words" style="color:var(--purple)">${fmtWords(a.unvestedRSU)}</span></div>` : ''}
+                  </div>
+                  <div class="asset-item-right">
+                    <div class="asset-item-value" style="color:${isDebt?'var(--red)':'var(--text)'}">
+                      ${a.value ? fmt(a.value) : '—'}
+                      ${a.value ? `<div class="fig-words">${fmtWords(a.value)}</div>` : ''}
+                    </div>
+                    ${a.category === 'insurance' && a.sumAssured ? `<div class="asset-item-assured">SA: ${fmt(a.sumAssured)}<span class="fig-words">${fmtWords(a.sumAssured)}</span></div>` : ''}
+                    <span class="asset-status-badge ${statusCls}">${a.status}</span>
+                  </div>
+                </div>`;
+            }).join('')}
+            <button class="asset-add-btn" data-cat="${cat.key}">+ Add</button>
+          </div>
+        </div>`;
+    }).join('')}
+  `;
+
+  // Category accordion toggle
+  $('future-content').querySelectorAll('.asset-category').forEach(el => {
+    el.querySelector('.asset-cat-header').addEventListener('click', () => {
+      el.classList.toggle('expanded');
+    });
+  });
+
+  // Edit existing asset
+  $('future-content').querySelectorAll('.asset-item').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.closest('.asset-add-btn')) return;
+      openAssetModal(el.dataset.id);
+    });
+  });
+
+  // Add new asset per category
+  $('future-content').querySelectorAll('.asset-add-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openAssetModal(null, btn.dataset.cat);
+    });
+  });
+}
+
+let editingAssetId = null;
+function toggleAssuredRow() {
+  $('ast-assured-row').classList.toggle('hidden', $('ast-cat').value !== 'insurance');
+  $('ast-unvested-row').classList.toggle('hidden', $('ast-cat').value !== 'investments');
+}
+$('ast-cat').addEventListener('change', toggleAssuredRow);
+function openAssetModal(id, defaultCat) {
+  const asset = id ? (db.assets||[]).find(a => a.id === id) : null;
+  editingAssetId = id || null;
+  $('modal-asset-title').textContent = asset ? 'Edit Asset' : 'Add Asset';
+  $('ast-cat').value        = asset?.category   || defaultCat || 'investments';
+  $('ast-name').value       = asset?.name       || '';
+  $('ast-value').value      = asset?.value      || '';
+  $('ast-assured').value    = asset?.sumAssured  || '';
+  $('ast-unvested').value   = asset?.unvestedRSU || '';
+  $('ast-commitment').value = asset?.commitment  || '';
+  $('ast-freq').value       = asset?.commitFreq || '';
+  $('ast-status').value     = asset?.status     || 'active';
+  $('ast-notes').value      = asset?.notes      || '';
+  $('btn-delete-asset').style.display = asset ? '' : 'none';
+  toggleAssuredRow();
+  $('modal-asset').classList.remove('hidden');
+  setTimeout(() => $('ast-name').focus(), 50);
+}
+
+$('form-asset').addEventListener('submit', e => {
+  e.preventDefault();
+  if (!db.assets) db.assets = [];
+  const entry = {
+    id:          editingAssetId || uid(),
+    category:    $('ast-cat').value,
+    name:        $('ast-name').value.trim(),
+    value:       parseFloat($('ast-value').value)      || 0,
+    sumAssured:  parseFloat($('ast-assured').value)   || 0,
+    unvestedRSU: parseFloat($('ast-unvested').value)  || 0,
+    commitment:  parseFloat($('ast-commitment').value) || 0,
+    commitFreq:  $('ast-freq').value,
+    status:      $('ast-status').value,
+    notes:       $('ast-notes').value.trim(),
+  };
+  if (editingAssetId) {
+    const idx = db.assets.findIndex(a => a.id === editingAssetId);
+    if (idx >= 0) db.assets[idx] = entry; else db.assets.push(entry);
+  } else {
+    db.assets.push(entry);
+  }
+  saveDB(); closeModal('modal-asset'); renderFuture();
+});
+
+$('btn-delete-asset').addEventListener('click', () => {
+  if (!editingAssetId || !confirm('Delete this asset?')) return;
+  db.assets = (db.assets||[]).filter(a => a.id !== editingAssetId);
+  saveDB(); closeModal('modal-asset'); renderFuture();
+});
+
+// ── Notifications ─────────────────────────────────────────────────
+$('btn-notify').addEventListener('click', async () => {
+  if (!('Notification' in window)) { alert('Notifications not supported in this browser.'); return; }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    scheduleNotifications();
+    alert('Reminders enabled! You will be notified on due dates.');
+  } else {
+    alert('Permission denied. Enable notifications in browser/OS settings.');
+  }
+});
+
+function scheduleNotifications() {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.ready.then(reg => {
+    const key   = monthKey(today.getFullYear(), today.getMonth());
+    const items = db.expenses[key] || [];
+    items.forEach(it => {
+      if (it.status === 'Paid') return;
+      const due  = new Date(it.due);
+      const diff = Math.floor((due - today) / 86400000);
+      if ([0, 1, 3].includes(diff)) {
+        const label = diff === 0 ? 'Due TODAY' : `Due in ${diff} day${diff > 1 ? 's' : ''}`;
+        reg.showNotification(`Finance: ${it.name}`, {
+          body: `${label} — ${fmtFull(it.amount)}`,
+          tag: `finance-${it.id}`,
+        });
+      }
+    });
+  });
+}
+
+// ── Sync ──────────────────────────────────────────────────────────
+$('btn-sync').addEventListener('click', () => $('modal-sync').classList.remove('hidden'));
+
+$('btn-export').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `finance-tracker-${today.toISOString().slice(0,10)}.json`;
+  a.click();
+});
+
+$('inp-import').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imp = JSON.parse(ev.target.result);
+      if (!imp.expenses) throw new Error();
+      if (!confirm('Replace all current data with imported data?')) return;
+      db = imp; saveDB(); renderMonthly();
+      closeModal('modal-sync');
+      alert('Data imported successfully!');
+    } catch { alert('Invalid JSON file.'); }
+  };
+  reader.readAsText(file);
+});
+
+$('btn-clear-data').addEventListener('click', () => {
+  if (!confirm('Clear ALL data and restore defaults?')) return;
+  db = { expenses: {}, rsu: [], templates: [], takeHome: {} };
+  if (typeof SEED_2025)      db.expenses  = JSON.parse(JSON.stringify(SEED_2025));
+  if (typeof SEED_2026)      Object.entries(SEED_2026).forEach(([k,v]) => { db.expenses[k] = JSON.parse(JSON.stringify(v)); });
+  if (typeof SEED_TEMPLATES) db.templates = JSON.parse(JSON.stringify(SEED_TEMPLATES));
+  if (typeof SEED_RSU)       db.rsu       = JSON.parse(JSON.stringify(SEED_RSU));
+  if (typeof SEED_TAKEHOME)  db.takeHome  = JSON.parse(JSON.stringify(SEED_TAKEHOME));
+  if (typeof SEED_ASSETS)    db.assets    = JSON.parse(JSON.stringify(SEED_ASSETS));
+  db._dataVersion = DATA_VERSION;
+  saveDB(); closeModal('modal-sync'); renderMonthly();
+});
+
+// ── Modal helpers ─────────────────────────────────────────────────
+function closeModal(id) { $(id).classList.add('hidden'); }
+
+document.querySelectorAll('.close-btn').forEach(btn => {
+  btn.addEventListener('click', () => closeModal(btn.dataset.close));
+});
+document.querySelectorAll('.modal').forEach(modal => {
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); });
+});
+
+// ── Service worker ────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  // service worker disabled in bundle
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+initSelectors();
+initTakeHomeSave();
+initTHBlur();
+renderMonthly();
+
+</script>
+</body>
+</html>
