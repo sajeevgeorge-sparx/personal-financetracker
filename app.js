@@ -27,15 +27,35 @@ const gasSync = {
   url()          { return store.get(GAS_URL_KEY) || ''; },
   isConfigured() { return !!this.url(); },
 
+  // JSONP bypasses CORS for GET — injects a <script> tag instead of fetch()
+  _jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const cb = '_gas' + Date.now() + Math.random().toString(36).slice(2, 7);
+      const script = document.createElement('script');
+      const cleanup = () => { delete window[cb]; if (script.parentNode) script.remove(); };
+      const timer = setTimeout(() => {
+        cleanup(); reject(new Error('Request timed out — check GAS URL and deployment'));
+      }, 15000);
+      window[cb] = (data) => { clearTimeout(timer); cleanup(); resolve(data); };
+      script.onerror = () => {
+        clearTimeout(timer); cleanup();
+        reject(new Error('Cannot reach Apps Script — verify the URL and that access is set to "Anyone"'));
+      };
+      script.src = url + '&callback=' + cb;
+      document.head.appendChild(script);
+    });
+  },
+
   async push(dbData) {
     if (!this.isConfigured()) return;
     try {
-      const res = await fetch(this.url(), {
+      // no-cors avoids CORS preflight; GAS still processes the POST
+      // (response is opaque — we cannot read it, but the write completes)
+      await fetch(this.url(), {
         method: 'POST',
-        body: JSON.stringify({ action: 'save', data: dbData }),
+        mode:   'no-cors',
+        body:   JSON.stringify({ action: 'save', data: dbData }),
       });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || 'Save failed');
       store.set(GAS_SYNC_KEY, new Date().toISOString());
       setSyncDot('ok');
       updateSyncStatus();
@@ -48,9 +68,7 @@ const gasSync = {
 
   async pull() {
     if (!this.isConfigured()) return null;
-    const res = await fetch(this.url() + '?action=load&t=' + Date.now());
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    const data = await this._jsonp(this.url() + '?action=load&t=' + Date.now());
     if (data.error) throw new Error(data.error);
     if (!data.expenses) throw new Error('Invalid data from Sheets');
     store.set(GAS_SYNC_KEY, new Date().toISOString());
@@ -58,9 +76,7 @@ const gasSync = {
   },
 
   async test(url) {
-    const res = await fetch(url + '?action=load&t=' + Date.now());
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    const data = await this._jsonp(url + '?action=load&t=' + Date.now());
     if (data.error) throw new Error(data.error);
     if (!data.expenses) throw new Error('Unexpected response — check Apps Script deployment');
     return true;
