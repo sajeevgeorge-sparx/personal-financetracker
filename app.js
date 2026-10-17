@@ -157,7 +157,7 @@ if (!db._dataVersion || db._dataVersion < DATA_VERSION) {
   db._dataVersion = DATA_VERSION;
 }
 
-saveDB();
+saveDB(false);
 
 // ── Helpers ───────────────────────────────────────────────────────
 function uid() { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
