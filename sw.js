@@ -1,6 +1,6 @@
 /* sw.js — Finance Tracker Service Worker */
 
-const CACHE = 'finance-v4';
+const CACHE = 'finance-v5';
 const STATIC_ASSETS = [
   './manifest.json',
   './icon.svg',
@@ -43,7 +43,10 @@ self.addEventListener('fetch', e => {
     // Network-first: always get latest code; fall back to cache only when offline
     e.respondWith(
       fetch(e.request).then(res => {
-        if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+        if (res.ok) {
+          const clone = res.clone(); // clone before any async op consumes the original
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
         return res;
       }).catch(() => caches.match(e.request))
     );

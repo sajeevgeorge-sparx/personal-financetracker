@@ -35,10 +35,12 @@ function saveDB(hint) {
     console.error('[GAS save error]', err);
   };
 
-  const onSaveOk = (label) => {
+  const onSaveOk = (label, gasTs) => {
+    // Sync local lastModified to GAS's exact timestamp so refresh won't trigger a pull
+    if (gasTs) { db.lastModified = gasTs; store.set(STORE_KEY, JSON.stringify(db)); }
     setSyncDot('ok'); updateSyncStatus();
     showToast('✓ Saved to Sheets (' + label + ')');
-    console.log('[GAS save ok]', label);
+    console.log('[GAS save ok]', label, gasTs || '');
   };
 
   if (hint && typeof hint === 'object') {
@@ -47,26 +49,26 @@ function saveDB(hint) {
         // Atomic single-row upsert — no sheet clear, no race window
         console.log('[GAS] saveItem', hint.key, hint.item.id);
         gasSync.saveItem(hint.key, hint.item)
-          .then(() => onSaveOk('expense ' + hint.key))
+          .then(gasTs => onSaveOk('expense ' + hint.key, gasTs))
           .catch(onSaveError);
       } else if (hint.deleteId) {
         // Atomic single-row delete
         console.log('[GAS] deleteItem', hint.key, hint.deleteId);
         gasSync.deleteItem(hint.key, hint.deleteId)
-          .then(() => onSaveOk('delete ' + hint.key))
+          .then(gasTs => onSaveOk('delete ' + hint.key, gasTs))
           .catch(onSaveError);
       } else {
         // Bulk month write (ensureMonthPopulated, import)
         console.log('[GAS] saveMonth', hint.key, 'items:', (db.expenses[hint.key]||[]).length);
         gasSync.saveMonth(hint.key, db.expenses[hint.key] || [])
-          .then(() => onSaveOk('expenses ' + hint.key))
+          .then(gasTs => onSaveOk('expenses ' + hint.key, gasTs))
           .catch(onSaveError);
       }
     } else if (hint.section) {
       const d = hint.section === 'takehome' ? db.takeHome : db[hint.section];
       console.log('[GAS] saveSection', hint.section);
       gasSync.saveSection(hint.section, d || [])
-        .then(() => onSaveOk(hint.section))
+        .then(gasTs => onSaveOk(hint.section, gasTs))
         .catch(onSaveError);
     }
   } else {
@@ -117,24 +119,28 @@ const gasSync = {
   async saveMonth(key, items) {
     const r = await this._jsonp(this._url('save_month', { key, data: JSON.stringify(items) }));
     if (r.error) throw new Error(r.error);
+    return r.lastModified || null;
   },
 
   // Write a full section: templates | rsu | assets | takehome
   async saveSection(section, data) {
     const r = await this._jsonp(this._url('save_section', { section, data: JSON.stringify(data) }));
     if (r.error) throw new Error(r.error);
+    return r.lastModified || null;
   },
 
   // Atomic: upsert a single expense row (no clear — safe against read races)
   async saveItem(key, item) {
     const r = await this._jsonp(this._url('save_item', { key, data: JSON.stringify(item) }));
     if (r.error) throw new Error(r.error);
+    return r.lastModified || null;
   },
 
   // Atomic: delete a single expense row by id
   async deleteItem(key, itemId) {
     const r = await this._jsonp(this._url('delete_item', { key, id: itemId }));
     if (r.error) throw new Error(r.error);
+    return r.lastModified || null;
   },
 
   // Full push — months in parallel batches of 4, then other sections
@@ -146,7 +152,9 @@ const gasSync = {
     await this.saveSection('templates', db.templates || []);
     await this.saveSection('rsu',       db.rsu       || []);
     await this.saveSection('assets',    db.assets    || []);
-    await this.saveSection('takehome',  db.takeHome  || {});
+    const gasTs = await this.saveSection('takehome',  db.takeHome  || {});
+    // Sync local lastModified with GAS timestamp so next refresh won't trigger a pull
+    if (gasTs) { db.lastModified = gasTs; store.set(STORE_KEY, JSON.stringify(db)); }
     store.set(GAS_SYNC_KEY, new Date().toISOString());
     setSyncDot('ok');
     updateSyncStatus();
@@ -1689,7 +1697,9 @@ async function init() {
         if (data) {
           // Only replace local db if pulled data is not older than what we have locally
           const pulledTs = data.lastModified || remoteTs;
+          const expKeys = Object.keys(data.expenses || {});
           console.log('[Sync init] pulledTs:', pulledTs, 'will overwrite local:', !localTs || pulledTs >= localTs);
+          console.log('[Sync init] pulled expense keys:', expKeys);
           if (!localTs || pulledTs >= localTs) {
             db = data;
             if (!db.assets)    db.assets    = [];
