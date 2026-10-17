@@ -43,10 +43,25 @@ function saveDB(hint) {
 
   if (hint && typeof hint === 'object') {
     if (hint.section === 'expenses' && hint.key) {
-      console.log('[GAS] saveMonth', hint.key, 'items:', (db.expenses[hint.key]||[]).length);
-      gasSync.saveMonth(hint.key, db.expenses[hint.key] || [])
-        .then(() => onSaveOk('expenses ' + hint.key))
-        .catch(onSaveError);
+      if (hint.item) {
+        // Atomic single-row upsert — no sheet clear, no race window
+        console.log('[GAS] saveItem', hint.key, hint.item.id);
+        gasSync.saveItem(hint.key, hint.item)
+          .then(() => onSaveOk('expense ' + hint.key))
+          .catch(onSaveError);
+      } else if (hint.deleteId) {
+        // Atomic single-row delete
+        console.log('[GAS] deleteItem', hint.key, hint.deleteId);
+        gasSync.deleteItem(hint.key, hint.deleteId)
+          .then(() => onSaveOk('delete ' + hint.key))
+          .catch(onSaveError);
+      } else {
+        // Bulk month write (ensureMonthPopulated, import)
+        console.log('[GAS] saveMonth', hint.key, 'items:', (db.expenses[hint.key]||[]).length);
+        gasSync.saveMonth(hint.key, db.expenses[hint.key] || [])
+          .then(() => onSaveOk('expenses ' + hint.key))
+          .catch(onSaveError);
+      }
     } else if (hint.section) {
       const d = hint.section === 'takehome' ? db.takeHome : db[hint.section];
       console.log('[GAS] saveSection', hint.section);
@@ -107,6 +122,18 @@ const gasSync = {
   // Write a full section: templates | rsu | assets | takehome
   async saveSection(section, data) {
     const r = await this._jsonp(this._url('save_section', { section, data: JSON.stringify(data) }));
+    if (r.error) throw new Error(r.error);
+  },
+
+  // Atomic: upsert a single expense row (no clear — safe against read races)
+  async saveItem(key, item) {
+    const r = await this._jsonp(this._url('save_item', { key, data: JSON.stringify(item) }));
+    if (r.error) throw new Error(r.error);
+  },
+
+  // Atomic: delete a single expense row by id
+  async deleteItem(key, itemId) {
+    const r = await this._jsonp(this._url('delete_item', { key, id: itemId }));
     if (r.error) throw new Error(r.error);
   },
 
@@ -531,7 +558,7 @@ function renderMonthly() {
       const it = items.find(i => i.id === btn.dataset.id);
       if (!it) return;
       it.status = 'Paid'; it.paidAmount = it.amount;
-      saveDB({ section: 'expenses', key }); renderMonthly(); scheduleNotifications();
+      saveDB({ section: 'expenses', key, item: it }); renderMonthly(); scheduleNotifications();
     });
   });
 
@@ -542,7 +569,7 @@ function renderMonthly() {
       const it = items.find(i => i.id === btn.dataset.id);
       if (!it) return;
       it.status = ''; it.paidAmount = 0;
-      saveDB({ section: 'expenses', key }); renderMonthly();
+      saveDB({ section: 'expenses', key, item: it }); renderMonthly();
     });
   });
 }
@@ -649,12 +676,16 @@ $('form-expense').addEventListener('submit', e => {
   if (editingItemKey) {
     const id  = editingItemKey.split('|')[1];
     const idx = items.findIndex(i => i.id === id);
-    if (idx >= 0) items[idx] = { ...items[idx], ...entry };
+    const updated = idx >= 0 ? { ...items[idx], ...entry } : { id, ...entry };
+    if (idx >= 0) items[idx] = updated; else items.push(updated);
+    saveDB({ section: 'expenses', key: mKey, item: updated });
   } else {
-    items.push({ id: uid(), ...entry });
+    const newItem = { id: uid(), ...entry };
+    items.push(newItem);
+    saveDB({ section: 'expenses', key: mKey, item: newItem });
   }
 
-  saveDB({ section: 'expenses', key: mKey }); closeModal('modal-expense'); renderMonthly();
+  closeModal('modal-expense'); renderMonthly();
   scheduleNotifications();
 });
 
@@ -662,7 +693,7 @@ $('btn-delete-item').addEventListener('click', () => {
   if (!editingItemKey || !confirm('Delete this item?')) return;
   const [mKey, id] = editingItemKey.split('|');
   db.expenses[mKey] = (db.expenses[mKey]||[]).filter(i => i.id !== id);
-  saveDB({ section: 'expenses', key: mKey }); closeModal('modal-expense'); renderMonthly();
+  saveDB({ section: 'expenses', key: mKey, deleteId: id }); closeModal('modal-expense'); renderMonthly();
 });
 
 // ── Templates ─────────────────────────────────────────────────────
