@@ -18,18 +18,36 @@ function loadDB() {
   try { const r = store.get(STORE_KEY); if (r) return JSON.parse(r); } catch {}
   return { expenses: {}, rsu: [], templates: [], takeHome: {}, assets: [] };
 }
-function saveDB(pushToGAS = true) {
+function saveDB(hint) {
+  // hint = false   → localStorage only (no GAS push)
+  // hint = { section: 'expenses', key: '2026-10' } → push just that month
+  // hint = { section: 'templates'|'rsu'|'assets'|'takehome' } → push that section
+  // hint = true / undefined → full debounced pushAll
+  if (hint !== false) db.lastModified = new Date().toISOString();
   try { store.set(STORE_KEY, JSON.stringify(db)); } catch {}
-  if (!pushToGAS || !gasSync.isConfigured()) return;
+  if (hint === false || !gasSync.isConfigured()) return;
   setSyncDot('syncing');
-  clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(() => {
-    gasSync.pushAll(db).catch(err => {
-      setSyncDot('error', err.message);
-      updateSyncStatus();
-      console.warn('GAS sync failed:', err.message);
-    });
-  }, 600);
+
+  if (hint && typeof hint === 'object') {
+    if (hint.section === 'expenses' && hint.key) {
+      gasSync.saveMonth(hint.key, db.expenses[hint.key] || [])
+        .then(() => { setSyncDot('ok'); updateSyncStatus(); })
+        .catch(err => setSyncDot('error', err.message));
+    } else if (hint.section) {
+      const d = hint.section === 'takehome' ? db.takeHome : db[hint.section];
+      gasSync.saveSection(hint.section, d || [])
+        .then(() => { setSyncDot('ok'); updateSyncStatus(); })
+        .catch(err => setSyncDot('error', err.message));
+    }
+  } else {
+    clearTimeout(_syncTimer);
+    _syncTimer = setTimeout(() => {
+      gasSync.pushAll(db).catch(err => {
+        setSyncDot('error', err.message);
+        updateSyncStatus();
+      });
+    }, 600);
+  }
 }
 
 // ── Google Apps Script Sync ───────────────────────────────────────
@@ -89,6 +107,14 @@ const gasSync = {
     store.set(GAS_SYNC_KEY, new Date().toISOString());
     setSyncDot('ok');
     updateSyncStatus();
+  },
+
+  async ping() {
+    if (!this.isConfigured()) return null;
+    try {
+      const data = await this._jsonp(this._url('ping'));
+      return data.lastModified || null;
+    } catch { return null; }
   },
 
   async pull() {
@@ -353,10 +379,8 @@ function ensureMonthPopulated(key) {
       due, status: '', paidAmount: 0, notes: ''
     };
   });
-  saveDB();
+  saveDB({ section: 'expenses', key });
 }
-
-// ── Monthly render ────────────────────────────────────────────────
 function renderMonthly() {
   const key = monthKey(curYear, curMonth);
   ensureMonthPopulated(key);
@@ -447,7 +471,7 @@ function renderMonthly() {
       const it = items.find(i => i.id === btn.dataset.id);
       if (!it) return;
       it.status = 'Paid'; it.paidAmount = it.amount;
-      saveDB(); renderMonthly(); scheduleNotifications();
+      saveDB({ section: 'expenses', key }); renderMonthly(); scheduleNotifications();
     });
   });
 
@@ -458,7 +482,7 @@ function renderMonthly() {
       const it = items.find(i => i.id === btn.dataset.id);
       if (!it) return;
       it.status = ''; it.paidAmount = 0;
-      saveDB(); renderMonthly();
+      saveDB({ section: 'expenses', key }); renderMonthly();
     });
   });
 }
@@ -472,7 +496,7 @@ function initTakeHomeSave() {
     const val = parseFloat(inp.value) || 0;
     if (!db.takeHome) db.takeHome = {};
     if (val) db.takeHome[key] = val; else delete db.takeHome[key];
-    saveDB();
+    saveDB({ section: 'takehome' });
     const thEl = $('stat-takehome');
     if (thEl) thEl.textContent = val ? fmt(val) : '—';
     inp.value = '';
@@ -570,7 +594,7 @@ $('form-expense').addEventListener('submit', e => {
     items.push({ id: uid(), ...entry });
   }
 
-  saveDB(); closeModal('modal-expense'); renderMonthly();
+  saveDB({ section: 'expenses', key: mKey }); closeModal('modal-expense'); renderMonthly();
   scheduleNotifications();
 });
 
@@ -578,7 +602,7 @@ $('btn-delete-item').addEventListener('click', () => {
   if (!editingItemKey || !confirm('Delete this item?')) return;
   const [mKey, id] = editingItemKey.split('|');
   db.expenses[mKey] = (db.expenses[mKey]||[]).filter(i => i.id !== id);
-  saveDB(); closeModal('modal-expense'); renderMonthly();
+  saveDB({ section: 'expenses', key: mKey }); closeModal('modal-expense'); renderMonthly();
 });
 
 // ── Templates ─────────────────────────────────────────────────────
@@ -631,7 +655,7 @@ function renderTemplates() {
       const tpl = (db.templates||[]).find(t => t.id === btn.dataset.id);
       if (!tpl) return;
       tpl.active = !tpl.active;
-      saveDB(); renderTemplates();
+      saveDB({ section: 'templates' }); renderTemplates();
     });
   });
 
@@ -640,7 +664,7 @@ function renderTemplates() {
       e.stopPropagation();
       if (!confirm(`Delete template "${(db.templates||[]).find(t=>t.id===btn.dataset.id)?.name}"? Existing monthly entries are unaffected.`)) return;
       db.templates = (db.templates||[]).filter(t => t.id !== btn.dataset.id);
-      saveDB(); renderTemplates();
+      saveDB({ section: 'templates' }); renderTemplates();
     });
   });
 }
@@ -679,13 +703,13 @@ $('form-template').addEventListener('submit', e => {
   } else {
     db.templates.push({ id: uid(), ...entry });
   }
-  saveDB(); closeModal('modal-template'); renderTemplates();
+  saveDB({ section: 'templates' }); closeModal('modal-template'); renderTemplates();
 });
 
 $('btn-delete-template').addEventListener('click', () => {
   if (!editingTplId || !confirm('Delete this template? Existing monthly entries are unaffected.')) return;
   db.templates = (db.templates||[]).filter(t => t.id !== editingTplId);
-  saveDB(); closeModal('modal-template'); renderTemplates();
+  saveDB({ section: 'templates' }); closeModal('modal-template'); renderTemplates();
 });
 
 // ── RSU ───────────────────────────────────────────────────────────
@@ -821,13 +845,13 @@ $('form-rsu').addEventListener('submit', e => {
   } else {
     db.rsu.push(entry);
   }
-  saveDB(); closeModal('modal-rsu'); renderRSU();
+  saveDB({ section: 'rsu' }); closeModal('modal-rsu'); renderRSU();
 });
 
 $('btn-delete-rsu').addEventListener('click', () => {
   if (!editingRsuId || !confirm('Delete this RSU sale?')) return;
   db.rsu = (db.rsu||[]).filter(r => r.id !== editingRsuId);
-  saveDB(); closeModal('modal-rsu'); renderRSU();
+  saveDB({ section: 'rsu' }); closeModal('modal-rsu'); renderRSU();
 });
 
 // ── Summary ───────────────────────────────────────────────────────
@@ -1308,13 +1332,13 @@ $('form-asset').addEventListener('submit', e => {
   } else {
     db.assets.push(entry);
   }
-  saveDB(); closeModal('modal-asset'); renderFuture();
+  saveDB({ section: 'assets' }); closeModal('modal-asset'); renderFuture();
 });
 
 $('btn-delete-asset').addEventListener('click', () => {
   if (!editingAssetId || !confirm('Delete this asset?')) return;
   db.assets = (db.assets||[]).filter(a => a.id !== editingAssetId);
-  saveDB(); closeModal('modal-asset'); renderFuture();
+  saveDB({ section: 'assets' }); closeModal('modal-asset'); renderFuture();
 });
 
 // ── Notifications ─────────────────────────────────────────────────
@@ -1523,20 +1547,29 @@ async function init() {
   initTHBlur();
   renderMonthly();
 
-  // Auto-pull from Sheets on startup (if configured)
+  // On startup: only pull from Sheets if Sheets is genuinely newer than local data
   if (gasSync.isConfigured()) {
     setSyncDot('syncing');
     try {
-      const data = await gasSync.pull();
-      if (data) {
-        db = data;
-        if (!db.assets)    db.assets    = [];
-        if (!db.rsu)       db.rsu       = [];
-        if (!db.takeHome)  db.takeHome  = {};
-        if (!db.templates) db.templates = [];
-        saveDB(false);
-        setSyncDot('ok', 'Synced from Sheets');
-        renderMonthly();
+      const remoteTs = await gasSync.ping();
+      const localTs  = db.lastModified || null;
+      const sheetsIsNewer = remoteTs && (!localTs || remoteTs > localTs);
+      if (sheetsIsNewer) {
+        const data = await gasSync.pull();
+        if (data) {
+          db = data;
+          if (!db.assets)    db.assets    = [];
+          if (!db.rsu)       db.rsu       = [];
+          if (!db.takeHome)  db.takeHome  = {};
+          if (!db.templates) db.templates = [];
+          saveDB(false);
+          setSyncDot('ok', 'Synced from Sheets');
+          renderMonthly();
+        } else {
+          setSyncDot('ok', 'Connected');
+        }
+      } else {
+        setSyncDot('ok', remoteTs ? 'Local data is current' : 'Connected');
       }
     } catch (err) {
       setSyncDot('error', 'Auto-sync failed: ' + err.message);
