@@ -20,7 +20,16 @@ function loadDB() {
 }
 function saveDB(pushToGAS = true) {
   try { store.set(STORE_KEY, JSON.stringify(db)); } catch {}
-  if (pushToGAS) gasSync.push(db);
+  if (!pushToGAS || !gasSync.isConfigured()) return;
+  setSyncDot('syncing');
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(() => {
+    gasSync.pushAll(db).catch(err => {
+      setSyncDot('error', err.message);
+      updateSyncStatus();
+      console.warn('GAS sync failed:', err.message);
+    });
+  }, 600);
 }
 
 // ── Google Apps Script Sync ───────────────────────────────────────
@@ -29,49 +38,62 @@ const gasSync = {
   secret()       { return store.get(GAS_SECRET_KEY) || ''; },
   isConfigured() { return !!(this.url() && this.secret()); },
 
-  // JSONP bypasses CORS for GET — injects a <script> tag instead of fetch()
+  // JSONP: injects a <script> tag — bypasses CORS for all requests
   _jsonp(url) {
     return new Promise((resolve, reject) => {
       const cb = '_gas' + Date.now() + Math.random().toString(36).slice(2, 7);
       const script = document.createElement('script');
       const cleanup = () => { delete window[cb]; if (script.parentNode) script.remove(); };
       const timer = setTimeout(() => {
-        cleanup(); reject(new Error('Request timed out — check GAS URL and deployment'));
+        cleanup(); reject(new Error('Request timed out'));
       }, 15000);
       window[cb] = (data) => { clearTimeout(timer); cleanup(); resolve(data); };
       script.onerror = () => {
         clearTimeout(timer); cleanup();
-        reject(new Error('Cannot reach Apps Script — verify the URL and that access is set to "Anyone"'));
+        reject(new Error('Cannot reach Apps Script — check URL and deployment'));
       };
       script.src = url + '&callback=' + cb;
       document.head.appendChild(script);
     });
   },
 
-  async push(dbData) {
-    if (!this.isConfigured()) return;
-    try {
-      // no-cors avoids CORS preflight; GAS still processes the POST
-      await fetch(this.url(), {
-        method: 'POST',
-        mode:   'no-cors',
-        body:   JSON.stringify({ action: 'save', s: this.secret(), data: dbData }),
-      });
-      store.set(GAS_SYNC_KEY, new Date().toISOString());
-      setSyncDot('ok');
-      updateSyncStatus();
-    } catch (err) {
-      console.warn('GAS push failed:', err.message);
-      setSyncDot('error', err.message);
-      updateSyncStatus();
+  // Build a signed GAS URL with action + extra params
+  _url(action, extra) {
+    let u = `${this.url()}?action=${action}&s=${encodeURIComponent(this.secret())}&t=${Date.now()}`;
+    if (extra) Object.entries(extra).forEach(([k, v]) => { u += `&${k}=${encodeURIComponent(v)}`; });
+    return u;
+  },
+
+  // Write one month's expenses (small payload, fits in GET URL)
+  async saveMonth(key, items) {
+    const r = await this._jsonp(this._url('save_month', { key, data: JSON.stringify(items) }));
+    if (r.error) throw new Error(r.error);
+  },
+
+  // Write a full section: templates | rsu | assets | takehome
+  async saveSection(section, data) {
+    const r = await this._jsonp(this._url('save_section', { section, data: JSON.stringify(data) }));
+    if (r.error) throw new Error(r.error);
+  },
+
+  // Full push — months in parallel batches of 4, then other sections
+  async pushAll(db) {
+    const months = Object.entries(db.expenses || {}).filter(([, items]) => items && items.length);
+    for (let i = 0; i < months.length; i += 4) {
+      await Promise.all(months.slice(i, i + 4).map(([key, items]) => this.saveMonth(key, items)));
     }
+    await this.saveSection('templates', db.templates || []);
+    await this.saveSection('rsu',       db.rsu       || []);
+    await this.saveSection('assets',    db.assets    || []);
+    await this.saveSection('takehome',  db.takeHome  || {});
+    store.set(GAS_SYNC_KEY, new Date().toISOString());
+    setSyncDot('ok');
+    updateSyncStatus();
   },
 
   async pull() {
     if (!this.isConfigured()) return null;
-    const data = await this._jsonp(
-      this.url() + '?action=load&s=' + encodeURIComponent(this.secret()) + '&t=' + Date.now()
-    );
+    const data = await this._jsonp(this._url('load'));
     if (data.error) throw new Error(data.error);
     if (!data.expenses) throw new Error('Invalid data from Sheets');
     store.set(GAS_SYNC_KEY, new Date().toISOString());
@@ -80,13 +102,16 @@ const gasSync = {
 
   async test(url, secret) {
     const data = await this._jsonp(
-      url + '?action=load&s=' + encodeURIComponent(secret) + '&t=' + Date.now()
+      `${url}?action=load&s=${encodeURIComponent(secret)}&t=${Date.now()}`
     );
     if (data.error) throw new Error(data.error);
     if (!data.expenses) throw new Error('Unexpected response — check Apps Script deployment');
     return true;
   },
 };
+
+// Debounce timer for background pushes
+let _syncTimer = null;
 
 let db = loadDB();
 
@@ -1408,7 +1433,7 @@ $('btn-gas-push').addEventListener('click', async () => {
   btn.disabled = true;
   setSyncDot('syncing');
   try {
-    await gasSync.push(db);
+    await gasSync.pushAll(db);
     setSyncDot('ok', 'Saved to Sheets');
     updateSyncStatus();
     showToast('Data saved to Google Sheets');
