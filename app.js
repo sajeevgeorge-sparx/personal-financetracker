@@ -3,8 +3,9 @@
 // ── Storage ───────────────────────────────────────────────────────
 const STORE_KEY    = 'financeTracker_v1';
 const DATA_VERSION = 4;
-const GAS_URL_KEY  = 'gasUrl';
-const GAS_SYNC_KEY = 'gasSyncTime';
+const GAS_URL_KEY    = 'gasUrl';
+const GAS_SECRET_KEY = 'gasSecret';
+const GAS_SYNC_KEY   = 'gasSyncTime';
 
 // Safe localStorage wrapper — iOS file:// blocks storage; fall back to in-memory
 const _mem = {};
@@ -24,8 +25,9 @@ function saveDB(pushToGAS = true) {
 
 // ── Google Apps Script Sync ───────────────────────────────────────
 const gasSync = {
-  url()          { return store.get(GAS_URL_KEY) || ''; },
-  isConfigured() { return !!this.url(); },
+  url()          { return store.get(GAS_URL_KEY)    || ''; },
+  secret()       { return store.get(GAS_SECRET_KEY) || ''; },
+  isConfigured() { return !!(this.url() && this.secret()); },
 
   // JSONP bypasses CORS for GET — injects a <script> tag instead of fetch()
   _jsonp(url) {
@@ -50,11 +52,10 @@ const gasSync = {
     if (!this.isConfigured()) return;
     try {
       // no-cors avoids CORS preflight; GAS still processes the POST
-      // (response is opaque — we cannot read it, but the write completes)
       await fetch(this.url(), {
         method: 'POST',
         mode:   'no-cors',
-        body:   JSON.stringify({ action: 'save', data: dbData }),
+        body:   JSON.stringify({ action: 'save', s: this.secret(), data: dbData }),
       });
       store.set(GAS_SYNC_KEY, new Date().toISOString());
       setSyncDot('ok');
@@ -68,15 +69,19 @@ const gasSync = {
 
   async pull() {
     if (!this.isConfigured()) return null;
-    const data = await this._jsonp(this.url() + '?action=load&t=' + Date.now());
+    const data = await this._jsonp(
+      this.url() + '?action=load&s=' + encodeURIComponent(this.secret()) + '&t=' + Date.now()
+    );
     if (data.error) throw new Error(data.error);
     if (!data.expenses) throw new Error('Invalid data from Sheets');
     store.set(GAS_SYNC_KEY, new Date().toISOString());
     return data;
   },
 
-  async test(url) {
-    const data = await this._jsonp(url + '?action=load&t=' + Date.now());
+  async test(url, secret) {
+    const data = await this._jsonp(
+      url + '?action=load&s=' + encodeURIComponent(secret) + '&t=' + Date.now()
+    );
     if (data.error) throw new Error(data.error);
     if (!data.expenses) throw new Error('Unexpected response — check Apps Script deployment');
     return true;
@@ -242,7 +247,9 @@ function updateSyncStatus() {
   }
 
   const urlInput = $('inp-gas-url');
+  const secInput = $('inp-gas-secret');
   if (urlInput && !urlInput.value) urlInput.value = gasSync.url();
+  if (secInput && !secInput.value) secInput.value = gasSync.secret();
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────
@@ -1324,15 +1331,17 @@ $('btn-sync').addEventListener('click', () => {
   $('modal-sync').classList.remove('hidden');
 });
 
-// GAS URL save + test
+// GAS URL + secret save + test
 $('btn-gas-save-url').addEventListener('click', async () => {
-  const url = ($('inp-gas-url').value || '').trim();
-  const btn = $('btn-gas-save-url');
-  const errEl = $('gas-error');
+  const url    = ($('inp-gas-url').value    || '').trim();
+  const secret = ($('inp-gas-secret').value || '').trim();
+  const btn    = $('btn-gas-save-url');
+  const errEl  = $('gas-error');
   errEl.classList.add('hidden');
 
-  if (!url) {
+  if (!url || !secret) {
     store.set(GAS_URL_KEY, '');
+    store.set(GAS_SECRET_KEY, '');
     updateSyncStatus();
     setSyncDot('');
     return;
@@ -1342,8 +1351,9 @@ $('btn-gas-save-url').addEventListener('click', async () => {
   btn.disabled = true;
   setSyncDot('syncing');
   try {
-    await gasSync.test(url);
+    await gasSync.test(url, secret);
     store.set(GAS_URL_KEY, url);
+    store.set(GAS_SECRET_KEY, secret);
     updateSyncStatus();
     setSyncDot('ok', 'Connected to Sheets');
     btn.textContent = 'Saved ✓';
