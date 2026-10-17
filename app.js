@@ -173,6 +173,18 @@ const gasSync = {
     const data = await this._jsonp(this._url('load'));
     if (data.error) throw new Error(data.error);
     if (!data.expenses) throw new Error('Invalid data from Sheets');
+    // Sheets auto-converts 'YYYY-MM' strings to Date objects; readDB() returns
+    // them as Date.toString() keys like 'Fri Oct 01 2026 12:30:00 GMT+0530 ...'
+    // Normalize all such keys back to 'YYYY-MM' before storing locally.
+    const normExp = {};
+    Object.entries(data.expenses).forEach(([k, items]) => {
+      const d = new Date(k);
+      const nk = (!isNaN(d.getTime()) && d.getFullYear() > 2000)
+        ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+        : k;
+      normExp[nk] = (normExp[nk] || []).concat(items);
+    });
+    data.expenses = normExp;
     store.set(GAS_SYNC_KEY, new Date().toISOString());
     return data;
   },
