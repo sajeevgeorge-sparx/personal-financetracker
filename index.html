@@ -64,6 +64,13 @@
 
         <!-- MONTHLY TAB -->
         <div id="tab-monthly" class="tab-content active">
+
+          <!-- Sync setup banner — visible only when GAS not configured -->
+          <div id="sync-setup-banner" class="sync-setup-banner hidden">
+            <span>☁️ Sync not set up on this device — your data won't be saved to Google Sheets.</span>
+            <button class="sync-banner-btn" id="btn-banner-sync">Set up sync →</button>
+          </div>
+
           <div class="page-header">
             <div class="month-nav">
               <button class="nav-btn" id="btn-prev">‹</button>
@@ -283,6 +290,9 @@
         <div class="modal-actions gas-actions" id="gas-buttons">
           <button class="btn-primary" id="btn-gas-pull" disabled>⬇ Load from Sheets</button>
           <button class="btn-secondary" id="btn-gas-push" disabled>⬆ Save to Sheets</button>
+        </div>
+        <div class="modal-actions" style="margin-top:4px">
+          <button class="btn-ghost" id="btn-copy-setup-link" style="display:none;font-size:0.8rem">🔗 Copy setup link for other devices</button>
         </div>
         <div id="gas-error" class="gas-error hidden"></div>
       </div>

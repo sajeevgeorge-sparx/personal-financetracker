@@ -314,7 +314,44 @@ function updateSyncStatus() {
   const secInput = $('inp-gas-secret');
   if (urlInput && !urlInput.value) urlInput.value = gasSync.url();
   if (secInput && !secInput.value) secInput.value = gasSync.secret();
+
+  // Show/hide copy setup link button
+  const copyBtn = $('btn-copy-setup-link');
+  if (copyBtn) copyBtn.style.display = gasSync.url() ? '' : 'none';
 }
+
+// ── Sync banner (shown when sync is not configured on this device) ─
+function updateSyncBanner() {
+  let banner = $('sync-setup-banner');
+  if (!banner) return;
+  if (gasSync.isConfigured()) {
+    banner.classList.add('hidden');
+  } else {
+    banner.classList.remove('hidden');
+  }
+}
+
+// Auto-fill GAS URL from ?setup= query param (used by "Copy setup link")
+(function applySetupParam() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const encodedUrl = params.get('setup');
+    if (encodedUrl) {
+      const url = atob(encodedUrl);
+      if (url.startsWith('https://')) {
+        store.set(GAS_URL_KEY, url);
+        // Clean the URL bar without reloading
+        history.replaceState(null, '', window.location.pathname);
+        // Open the sync modal so user just needs to enter the secret
+        setTimeout(() => {
+          updateSyncStatus();
+          $('modal-sync').classList.remove('hidden');
+          showToast('GAS URL loaded — enter your API secret to finish setup');
+        }, 500);
+      }
+    }
+  } catch {}
+})();
 
 // ── Sidebar ───────────────────────────────────────────────────────
 const sidebar = document.getElementById('sidebar');
@@ -1393,6 +1430,11 @@ $('btn-sync').addEventListener('click', () => {
   $('modal-sync').classList.remove('hidden');
 });
 
+$('btn-banner-sync').addEventListener('click', () => {
+  updateSyncStatus();
+  $('modal-sync').classList.remove('hidden');
+});
+
 // GAS URL + secret save + test
 $('btn-gas-save-url').addEventListener('click', async () => {
   const url    = ($('inp-gas-url').value    || '').trim();
@@ -1417,9 +1459,28 @@ $('btn-gas-save-url').addEventListener('click', async () => {
     store.set(GAS_URL_KEY, url);
     store.set(GAS_SECRET_KEY, secret);
     updateSyncStatus();
+    updateSyncBanner();
     setSyncDot('ok', 'Connected to Sheets');
     btn.textContent = 'Saved ✓';
     setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 2000);
+    // Auto-pull on first setup so this device gets current data immediately
+    try {
+      const remoteTs = await gasSync.ping();
+      const localTs  = db.lastModified || null;
+      if (remoteTs && (!localTs || remoteTs > localTs)) {
+        const data = await gasSync.pull();
+        if (data) {
+          db = data;
+          if (!db.assets)    db.assets    = [];
+          if (!db.rsu)       db.rsu       = [];
+          if (!db.takeHome)  db.takeHome  = {};
+          if (!db.templates) db.templates = [];
+          saveDB(false);
+          renderMonthly();
+          showToast('Synced latest data from Google Sheets');
+        }
+      }
+    } catch {} // non-fatal, credentials already saved
   } catch (err) {
     errEl.textContent = '⚠ ' + err.message;
     errEl.classList.remove('hidden');
@@ -1483,6 +1544,19 @@ $('btn-gas-push').addEventListener('click', async () => {
     btn.textContent = '⬆ Save to Sheets';
     btn.disabled = false;
   }
+});
+
+// Copy setup link (encodes GAS URL so mobile only needs the secret)
+$('btn-copy-setup-link').addEventListener('click', () => {
+  const url = gasSync.url();
+  if (!url) return;
+  const encoded = btoa(url);
+  const link = `${location.origin}${location.pathname}?setup=${encoded}`;
+  navigator.clipboard.writeText(link).then(() => {
+    showToast('Setup link copied — paste in mobile browser, then enter your secret');
+  }).catch(() => {
+    prompt('Copy this link and open it on mobile:', link);
+  });
 });
 
 // ── Toast notification ────────────────────────────────────────────
@@ -1559,6 +1633,7 @@ async function init() {
   initTakeHomeSave();
   initTHBlur();
   renderMonthly();
+  updateSyncBanner();
 
   // On startup: only pull from Sheets if Sheets is genuinely newer than local data
   if (gasSync.isConfigured()) {
