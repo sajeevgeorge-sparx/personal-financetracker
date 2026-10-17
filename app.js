@@ -1646,14 +1646,20 @@ async function init() {
       if (sheetsIsNewer) {
         const data = await gasSync.pull();
         if (data) {
-          db = data;
-          if (!db.assets)    db.assets    = [];
-          if (!db.rsu)       db.rsu       = [];
-          if (!db.takeHome)  db.takeHome  = {};
-          if (!db.templates) db.templates = [];
-          saveDB(false);
-          setSyncDot('ok', 'Synced from Sheets');
-          renderMonthly();
+          // Only replace local db if pulled data is not older than what we have locally
+          const pulledTs = data.lastModified || remoteTs;
+          if (!localTs || pulledTs >= localTs) {
+            db = data;
+            if (!db.assets)    db.assets    = [];
+            if (!db.rsu)       db.rsu       = [];
+            if (!db.takeHome)  db.takeHome  = {};
+            if (!db.templates) db.templates = [];
+            saveDB(false);
+            setSyncDot('ok', 'Synced from Sheets');
+            renderMonthly();
+          } else {
+            setSyncDot('ok', 'Local data is current');
+          }
         } else {
           setSyncDot('ok', 'Connected');
         }
