@@ -35,20 +35,29 @@ function saveDB(hint) {
     console.error('[GAS save error]', err);
   };
 
+  const onSaveOk = (label) => {
+    setSyncDot('ok'); updateSyncStatus();
+    showToast('✓ Saved to Sheets (' + label + ')');
+    console.log('[GAS save ok]', label);
+  };
+
   if (hint && typeof hint === 'object') {
     if (hint.section === 'expenses' && hint.key) {
+      console.log('[GAS] saveMonth', hint.key, 'items:', (db.expenses[hint.key]||[]).length);
       gasSync.saveMonth(hint.key, db.expenses[hint.key] || [])
-        .then(() => { setSyncDot('ok'); updateSyncStatus(); })
+        .then(() => onSaveOk('expenses ' + hint.key))
         .catch(onSaveError);
     } else if (hint.section) {
       const d = hint.section === 'takehome' ? db.takeHome : db[hint.section];
+      console.log('[GAS] saveSection', hint.section);
       gasSync.saveSection(hint.section, d || [])
-        .then(() => { setSyncDot('ok'); updateSyncStatus(); })
+        .then(() => onSaveOk(hint.section))
         .catch(onSaveError);
     }
   } else {
     clearTimeout(_syncTimer);
     _syncTimer = setTimeout(() => {
+      console.log('[GAS] pushAll');
       gasSync.pushAll(db).catch(err => {
         onSaveError(err);
         updateSyncStatus();
@@ -1643,11 +1652,13 @@ async function init() {
       const remoteTs = await gasSync.ping();
       const localTs  = db.lastModified || null;
       const sheetsIsNewer = remoteTs && (!localTs || remoteTs > localTs);
+      console.log('[Sync init] remoteTs:', remoteTs, 'localTs:', localTs, 'sheetsIsNewer:', sheetsIsNewer);
       if (sheetsIsNewer) {
         const data = await gasSync.pull();
         if (data) {
           // Only replace local db if pulled data is not older than what we have locally
           const pulledTs = data.lastModified || remoteTs;
+          console.log('[Sync init] pulledTs:', pulledTs, 'will overwrite local:', !localTs || pulledTs >= localTs);
           if (!localTs || pulledTs >= localTs) {
             db = data;
             if (!db.assets)    db.assets    = [];
