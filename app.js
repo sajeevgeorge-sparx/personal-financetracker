@@ -28,22 +28,28 @@ function saveDB(hint) {
   if (hint === false || !gasSync.isConfigured()) return;
   setSyncDot('syncing');
 
+  const onSaveError = (err) => {
+    setSyncDot('error', err.message);
+    showToast('⚠ Sheets save failed: ' + err.message);
+    console.error('[GAS save error]', err);
+  };
+
   if (hint && typeof hint === 'object') {
     if (hint.section === 'expenses' && hint.key) {
       gasSync.saveMonth(hint.key, db.expenses[hint.key] || [])
         .then(() => { setSyncDot('ok'); updateSyncStatus(); })
-        .catch(err => setSyncDot('error', err.message));
+        .catch(onSaveError);
     } else if (hint.section) {
       const d = hint.section === 'takehome' ? db.takeHome : db[hint.section];
       gasSync.saveSection(hint.section, d || [])
         .then(() => { setSyncDot('ok'); updateSyncStatus(); })
-        .catch(err => setSyncDot('error', err.message));
+        .catch(onSaveError);
     }
   } else {
     clearTimeout(_syncTimer);
     _syncTimer = setTimeout(() => {
       gasSync.pushAll(db).catch(err => {
-        setSyncDot('error', err.message);
+        onSaveError(err);
         updateSyncStatus();
       });
     }, 600);
@@ -132,6 +138,13 @@ const gasSync = {
     );
     if (data.error) throw new Error(data.error);
     if (!data.expenses) throw new Error('Unexpected response — check Apps Script deployment');
+    // Verify write actions exist in the deployed Code.gs
+    const pingData = await this._jsonp(
+      `${url}?action=ping&s=${encodeURIComponent(secret)}&t=${Date.now()}`
+    );
+    if (pingData.error && pingData.error.startsWith('Unknown action')) {
+      throw new Error('Code.gs is outdated — it cannot save data. Please replace Code.gs in Apps Script and deploy a new version.');
+    }
     return true;
   },
 };
