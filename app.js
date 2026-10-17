@@ -6,6 +6,7 @@ const DATA_VERSION = 4;
 const GAS_URL_KEY    = 'gasUrl';
 const GAS_SECRET_KEY = 'gasSecret';
 const GAS_SYNC_KEY   = 'gasSyncTime';
+const GAS_DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbz8oCdubej11uxqWU_fDJaIKBK46GJYQaCP3mo3iqfDON_AMPj-mJn0atO69rUxUCiolA/exec';
 
 // Safe localStorage wrapper — iOS file:// blocks storage; fall back to in-memory
 const _mem = {};
@@ -58,7 +59,7 @@ function saveDB(hint) {
 
 // ── Google Apps Script Sync ───────────────────────────────────────
 const gasSync = {
-  url()          { return store.get(GAS_URL_KEY)    || ''; },
+  url()          { return store.get(GAS_URL_KEY) || GAS_DEFAULT_URL; },
   secret()       { return store.get(GAS_SECRET_KEY) || ''; },
   isConfigured() { return !!(this.url() && this.secret()); },
 
@@ -331,7 +332,7 @@ function updateSyncBanner() {
   }
 }
 
-// Auto-fill GAS URL from ?setup= query param (used by "Copy setup link")
+// Auto-fill GAS URL from ?setup= query param (legacy; URL is now a constant)
 (function applySetupParam() {
   try {
     const params = new URLSearchParams(window.location.search);
