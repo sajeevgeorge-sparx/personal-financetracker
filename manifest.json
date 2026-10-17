@@ -1,0 +1,18 @@
+{
+  "name": "Sajeev's Finance Tracker",
+  "short_name": "Finance",
+  "description": "Personal finance tracker — expenses, RSU, assets",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#1e3a5f",
+  "theme_color": "#1e3a5f",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

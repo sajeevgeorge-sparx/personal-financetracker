@@ -3,6 +3,8 @@
 // ── Storage ───────────────────────────────────────────────────────
 const STORE_KEY    = 'financeTracker_v1';
 const DATA_VERSION = 4;
+const GAS_URL_KEY  = 'gasUrl';
+const GAS_SYNC_KEY = 'gasSyncTime';
 
 // Safe localStorage wrapper — iOS file:// blocks storage; fall back to in-memory
 const _mem = {};
@@ -15,7 +17,55 @@ function loadDB() {
   try { const r = store.get(STORE_KEY); if (r) return JSON.parse(r); } catch {}
   return { expenses: {}, rsu: [], templates: [], takeHome: {}, assets: [] };
 }
-function saveDB() { try { store.set(STORE_KEY, JSON.stringify(db)); } catch {} }
+function saveDB(pushToGAS = true) {
+  try { store.set(STORE_KEY, JSON.stringify(db)); } catch {}
+  if (pushToGAS) gasSync.push(db);
+}
+
+// ── Google Apps Script Sync ───────────────────────────────────────
+const gasSync = {
+  url()          { return store.get(GAS_URL_KEY) || ''; },
+  isConfigured() { return !!this.url(); },
+
+  async push(dbData) {
+    if (!this.isConfigured()) return;
+    try {
+      const res = await fetch(this.url(), {
+        method: 'POST',
+        body: JSON.stringify({ action: 'save', data: dbData }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'Save failed');
+      store.set(GAS_SYNC_KEY, new Date().toISOString());
+      setSyncDot('ok');
+      updateSyncStatus();
+    } catch (err) {
+      console.warn('GAS push failed:', err.message);
+      setSyncDot('error', err.message);
+      updateSyncStatus();
+    }
+  },
+
+  async pull() {
+    if (!this.isConfigured()) return null;
+    const res = await fetch(this.url() + '?action=load&t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    if (!data.expenses) throw new Error('Invalid data from Sheets');
+    store.set(GAS_SYNC_KEY, new Date().toISOString());
+    return data;
+  },
+
+  async test(url) {
+    const res = await fetch(url + '?action=load&t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    if (!data.expenses) throw new Error('Unexpected response — check Apps Script deployment');
+    return true;
+  },
+};
 
 let db = loadDB();
 
@@ -134,6 +184,50 @@ applyTheme(store.get('theme') || 'light');
 $('btn-theme').addEventListener('click', () => {
   applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
 });
+
+// ── Sync status indicator ─────────────────────────────────────────
+function setSyncDot(state, title) {
+  const dot = $('sync-dot');
+  if (!dot) return;
+  dot.className = 'sync-dot';
+  if (state === 'syncing') { dot.classList.add('sync-dot-syncing'); dot.title = 'Syncing…'; }
+  else if (state === 'ok')  { dot.classList.add('sync-dot-ok');     dot.title = title || 'Synced'; }
+  else if (state === 'error') { dot.classList.add('sync-dot-error'); dot.title = title || 'Sync error'; }
+  else { dot.classList.add('hidden'); return; }
+}
+
+function updateSyncStatus() {
+  const badge = $('gas-status-badge');
+  const info  = $('gas-sync-info');
+  const lastEl = $('gas-last-sync');
+  const pullBtn = $('btn-gas-pull');
+  const pushBtn = $('btn-gas-push');
+  if (!badge) return;
+
+  if (gasSync.isConfigured()) {
+    badge.textContent = '✓ Connected';
+    badge.className   = 'gas-badge gas-connected';
+    if (info)  info.classList.remove('hidden');
+    if (pullBtn) pullBtn.disabled = false;
+    if (pushBtn) pushBtn.disabled = false;
+    const ts = store.get(GAS_SYNC_KEY);
+    if (lastEl && ts) {
+      const mins = Math.round((Date.now() - new Date(ts).getTime()) / 60000);
+      lastEl.textContent = mins < 1 ? 'Synced just now' : `Last synced ${mins} min ago`;
+    } else if (lastEl) {
+      lastEl.textContent = 'Not yet synced this session';
+    }
+  } else {
+    badge.textContent = 'Not connected';
+    badge.className   = 'gas-badge gas-disconnected';
+    if (info)   info.classList.add('hidden');
+    if (pullBtn) pullBtn.disabled = true;
+    if (pushBtn) pushBtn.disabled = true;
+  }
+
+  const urlInput = $('inp-gas-url');
+  if (urlInput && !urlInput.value) urlInput.value = gasSync.url();
+}
 
 // ── Sidebar ───────────────────────────────────────────────────────
 const sidebar = document.getElementById('sidebar');
@@ -1208,9 +1302,117 @@ function scheduleNotifications() {
   });
 }
 
-// ── Sync ──────────────────────────────────────────────────────────
-$('btn-sync').addEventListener('click', () => $('modal-sync').classList.remove('hidden'));
+// ── Sync modal ────────────────────────────────────────────────────
+$('btn-sync').addEventListener('click', () => {
+  updateSyncStatus();
+  $('modal-sync').classList.remove('hidden');
+});
 
+// GAS URL save + test
+$('btn-gas-save-url').addEventListener('click', async () => {
+  const url = ($('inp-gas-url').value || '').trim();
+  const btn = $('btn-gas-save-url');
+  const errEl = $('gas-error');
+  errEl.classList.add('hidden');
+
+  if (!url) {
+    store.set(GAS_URL_KEY, '');
+    updateSyncStatus();
+    setSyncDot('');
+    return;
+  }
+
+  btn.textContent = 'Testing…';
+  btn.disabled = true;
+  setSyncDot('syncing');
+  try {
+    await gasSync.test(url);
+    store.set(GAS_URL_KEY, url);
+    updateSyncStatus();
+    setSyncDot('ok', 'Connected to Sheets');
+    btn.textContent = 'Saved ✓';
+    setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 2000);
+  } catch (err) {
+    errEl.textContent = '⚠ ' + err.message;
+    errEl.classList.remove('hidden');
+    setSyncDot('error', err.message);
+    btn.textContent = 'Save';
+    btn.disabled = false;
+  }
+});
+
+// Pull from Sheets
+$('btn-gas-pull').addEventListener('click', async () => {
+  const btn    = $('btn-gas-pull');
+  const errEl  = $('gas-error');
+  errEl.classList.add('hidden');
+  btn.textContent = '⬇ Loading…';
+  btn.disabled = true;
+  setSyncDot('syncing');
+  try {
+    const data = await gasSync.pull();
+    if (!data) throw new Error('No data returned');
+    db = data;
+    if (!db.assets) db.assets = [];
+    if (!db.rsu) db.rsu = [];
+    if (!db.takeHome) db.takeHome = {};
+    if (!db.templates) db.templates = [];
+    saveDB(false); // save to localStorage; don't push back
+    setSyncDot('ok', 'Loaded from Sheets');
+    updateSyncStatus();
+    renderMonthly();
+    closeModal('modal-sync');
+    showToast('Data loaded from Google Sheets');
+  } catch (err) {
+    errEl.textContent = '⚠ ' + err.message;
+    errEl.classList.remove('hidden');
+    setSyncDot('error', err.message);
+  } finally {
+    btn.textContent = '⬇ Load from Sheets';
+    btn.disabled = false;
+  }
+});
+
+// Push to Sheets
+$('btn-gas-push').addEventListener('click', async () => {
+  const btn   = $('btn-gas-push');
+  const errEl = $('gas-error');
+  errEl.classList.add('hidden');
+  btn.textContent = '⬆ Saving…';
+  btn.disabled = true;
+  setSyncDot('syncing');
+  try {
+    await gasSync.push(db);
+    setSyncDot('ok', 'Saved to Sheets');
+    updateSyncStatus();
+    showToast('Data saved to Google Sheets');
+    btn.textContent = 'Saved ✓';
+    setTimeout(() => { btn.textContent = '⬆ Save to Sheets'; btn.disabled = false; }, 2000);
+  } catch (err) {
+    errEl.textContent = '⚠ ' + err.message;
+    errEl.classList.remove('hidden');
+    setSyncDot('error', err.message);
+    btn.textContent = '⬆ Save to Sheets';
+    btn.disabled = false;
+  }
+});
+
+// ── Toast notification ────────────────────────────────────────────
+function showToast(msg) {
+  let toast = document.getElementById('ft-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'ft-toast';
+    toast.className = 'ft-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add('visible');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('visible'), 3000);
+}
+
+// ── Export JSON ───────────────────────────────────────────────────
 $('btn-export').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
   const a    = document.createElement('a');
@@ -1264,7 +1466,32 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────
-initSelectors();
-initTakeHomeSave();
-initTHBlur();
-renderMonthly();
+async function init() {
+  initSelectors();
+  initTakeHomeSave();
+  initTHBlur();
+  renderMonthly();
+
+  // Auto-pull from Sheets on startup (if configured)
+  if (gasSync.isConfigured()) {
+    setSyncDot('syncing');
+    try {
+      const data = await gasSync.pull();
+      if (data) {
+        db = data;
+        if (!db.assets)    db.assets    = [];
+        if (!db.rsu)       db.rsu       = [];
+        if (!db.takeHome)  db.takeHome  = {};
+        if (!db.templates) db.templates = [];
+        saveDB(false);
+        setSyncDot('ok', 'Synced from Sheets');
+        renderMonthly();
+      }
+    } catch (err) {
+      setSyncDot('error', 'Auto-sync failed: ' + err.message);
+      console.warn('GAS auto-pull failed:', err.message);
+    }
+  }
+}
+
+init();

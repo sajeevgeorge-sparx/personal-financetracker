@@ -763,4 +763,83 @@ form input:focus, form select:focus { outline: none; border-color: var(--blue); 
   cursor: pointer;
   transition: opacity 0.15s;
 }
+
+/* ── Sync dot (header indicator) ── */
+.hdr-btn { position: relative; }
+.sync-dot {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--header-bg);
+  pointer-events: none;
+}
+.sync-dot.hidden { display: none; }
+.sync-dot-syncing { background: var(--amber); animation: pulse 1s infinite; }
+.sync-dot-ok      { background: var(--green); }
+.sync-dot-error   { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ── Sync modal ── */
+.sync-section { padding: 4px 0 8px; }
+.sync-section-title {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; font-weight: 700; color: var(--text);
+  margin-bottom: 6px;
+}
+.sync-divider {
+  height: 1px; background: var(--border); margin: 12px 0;
+}
+.gas-badge {
+  font-size: 11px; font-weight: 600; padding: 2px 8px;
+  border-radius: 20px;
+}
+.gas-connected    { background: #dcfce7; color: #15803d; }
+.gas-disconnected { background: var(--surface2); color: var(--text-muted); }
+.gas-url-row {
+  display: flex; gap: 8px; margin: 8px 0;
+}
+.gas-url-input {
+  flex: 1; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); font-size: 12px;
+}
+.gas-url-input:focus { outline: none; border-color: var(--blue); }
+.gas-sync-info {
+  font-size: 11px; color: var(--text-muted); margin-bottom: 6px;
+}
+.gas-actions {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.gas-actions .btn-primary,
+.gas-actions .btn-secondary { flex: 1; min-width: 120px; }
+.gas-error {
+  margin-top: 6px; padding: 6px 10px;
+  background: #fef2f2; color: var(--red);
+  border-radius: 8px; font-size: 12px;
+}
+.modal-actions.column { display: flex; flex-direction: column; gap: 8px; }
+.btn-ghost.danger { color: var(--red); }
+.btn-ghost.danger:hover { background: #fef2f2; }
+
+/* ── Toast ── */
+.ft-toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1a1c2e; color: #fff;
+  padding: 10px 20px; border-radius: 20px;
+  font-size: 13px; font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  z-index: 9999; pointer-events: none;
+  transition: transform 0.3s cubic-bezier(.4,0,.2,1), opacity 0.3s;
+  opacity: 0;
+}
+.ft-toast.visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* ── sync-help-link ── */
+.sync-help-link { font-size: 11px; color: var(--blue); text-decoration: none; }
+.sync-help-link:hover { text-decoration: underline; }
 .trend-chart-wrap svg .chart-bar-cl:hover { opacity: 1 !important; }
