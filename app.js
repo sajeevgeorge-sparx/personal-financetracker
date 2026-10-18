@@ -173,16 +173,30 @@ const gasSync = {
     const data = await this._jsonp(this._url('load'));
     if (data.error) throw new Error(data.error);
     if (!data.expenses) throw new Error('Invalid data from Sheets');
-    // Sheets auto-converts 'YYYY-MM' strings to Date objects; readDB() returns
-    // them as Date.toString() keys like 'Fri Oct 01 2026 12:30:00 GMT+0530 ...'
-    // Normalize all such keys back to 'YYYY-MM' before storing locally.
+    // Sheets stores 'YYYY-MM' as a Date. readDB() returns them as either
+    //   - Date.toString() strings: 'Fri Oct 01 2026 12:30:00 GMT+0530...'
+    //   - Sheets serial numbers:   '46296'  (days since Dec 30, 1899)
+    // Normalize all variants to 'YYYY-MM', then deduplicate by item id
+    // (multiple Sheets key variants for the same month create duplicates).
     const normExp = {};
     Object.entries(data.expenses).forEach(([k, items]) => {
+      let nk = k;
       const d = new Date(k);
-      const nk = (!isNaN(d.getTime()) && d.getFullYear() > 2000)
-        ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
-        : k;
+      if (!isNaN(d.getTime()) && d.getFullYear() > 2000) {
+        nk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      } else {
+        const serial = Number(k);
+        if (!isNaN(serial) && serial > 40000 && serial < 60000) {
+          const d2 = new Date((serial - 25569) * 86400 * 1000);
+          if (d2.getFullYear() > 2000)
+            nk = `${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
+        }
+      }
       normExp[nk] = (normExp[nk] || []).concat(items);
+    });
+    Object.keys(normExp).forEach(k => {
+      const seen = new Set();
+      normExp[k] = normExp[k].filter(it => !seen.has(it.id) && seen.add(it.id));
     });
     data.expenses = normExp;
     store.set(GAS_SYNC_KEY, new Date().toISOString());
