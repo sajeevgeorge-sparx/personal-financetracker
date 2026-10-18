@@ -198,6 +198,11 @@ const gasSync = {
       const seen = new Set();
       normExp[k] = normExp[k].filter(it => !seen.has(it.id) && seen.add(it.id));
     });
+    // Normalize due dates in every expense item (may arrive as Date.toString(),
+    // Sheets serial number, or MM/DD/YYYY if Code.gs hasn't been migrated yet)
+    Object.values(normExp).forEach(items =>
+      items.forEach(it => { if (it.due) it.due = normalizeDue(it.due); })
+    );
     data.expenses = normExp;
     store.set(GAS_SYNC_KEY, new Date().toISOString());
     return data;
@@ -217,6 +222,13 @@ const gasSync = {
       throw new Error('Code.gs is outdated — it cannot save data. Please replace Code.gs in Apps Script and deploy a new version.');
     }
     return true;
+  },
+
+  // One-time migration: normalize all Expense keys and due dates in Sheets
+  async migrateData() {
+    const r = await this._jsonp(this._url('migrate_data'));
+    if (r.error) throw new Error(r.error);
+    return r.lastModified || null;
   },
 };
 
@@ -271,6 +283,27 @@ saveDB(false);
 
 // ── Helpers ───────────────────────────────────────────────────────
 function uid() { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+// Normalize a due-date value to 'YYYY-MM-DD'. Handles all raw formats from Sheets:
+//   - 'YYYY-MM-DD' (already correct)
+//   - Sheets serial number string '46296' (days since Dec 30, 1899)
+//   - Date.toString() 'Sat Mar 08 2025 13:30:00 GMT+0530 (...)'
+//   - US format string '10/2/2026'
+function normalizeDue(s) {
+  if (!s) return '';
+  const str = String(s).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str; // already ISO
+  const num = Number(str);
+  if (!isNaN(num) && num > 40000 && num < 80000) {
+    const d = new Date((num - 25569) * 86400 * 1000);
+    if (d.getUTCFullYear() > 2000)
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  }
+  const d = new Date(str);
+  if (!isNaN(d.getTime()) && d.getFullYear() > 2000)
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return str;
+}
 
 function fmt(n) {
   if (!n && n !== 0) return '₹0';
@@ -356,16 +389,18 @@ function updateSyncStatus() {
   const badge = $('gas-status-badge');
   const info  = $('gas-sync-info');
   const lastEl = $('gas-last-sync');
-  const pullBtn = $('btn-gas-pull');
-  const pushBtn = $('btn-gas-push');
+  const pullBtn    = $('btn-gas-pull');
+  const pushBtn    = $('btn-gas-push');
+  const migrateBtn = $('btn-gas-migrate');
   if (!badge) return;
 
   if (gasSync.isConfigured()) {
     badge.textContent = '✓ Connected';
     badge.className   = 'gas-badge gas-connected';
     if (info)  info.classList.remove('hidden');
-    if (pullBtn) pullBtn.disabled = false;
-    if (pushBtn) pushBtn.disabled = false;
+    if (pullBtn)    pullBtn.disabled    = false;
+    if (pushBtn)    pushBtn.disabled    = false;
+    if (migrateBtn) migrateBtn.disabled = false;
     const ts = store.get(GAS_SYNC_KEY);
     if (lastEl && ts) {
       const mins = Math.round((Date.now() - new Date(ts).getTime()) / 60000);
@@ -376,9 +411,10 @@ function updateSyncStatus() {
   } else {
     badge.textContent = 'Not connected';
     badge.className   = 'gas-badge gas-disconnected';
-    if (info)   info.classList.add('hidden');
-    if (pullBtn) pullBtn.disabled = true;
-    if (pushBtn) pushBtn.disabled = true;
+    if (info)       info.classList.add('hidden');
+    if (pullBtn)    pullBtn.disabled    = true;
+    if (pushBtn)    pushBtn.disabled    = true;
+    if (migrateBtn) migrateBtn.disabled = true;
   }
 
   const urlInput = $('inp-gas-url');
@@ -1617,6 +1653,39 @@ $('btn-gas-push').addEventListener('click', async () => {
     errEl.classList.remove('hidden');
     setSyncDot('error', err.message);
     btn.textContent = '⬆ Save to Sheets';
+    btn.disabled = false;
+  }
+});
+
+// Fix & Normalize Sheets data — one-time migration then pull
+$('btn-gas-migrate').addEventListener('click', async () => {
+  const btn   = $('btn-gas-migrate');
+  const errEl = $('gas-error');
+  errEl.classList.add('hidden');
+  btn.textContent = '🔧 Fixing…';
+  btn.disabled = true;
+  setSyncDot('syncing');
+  try {
+    await gasSync.migrateData();
+    const data = await gasSync.pull();
+    if (!data) throw new Error('No data returned after migration');
+    db = data;
+    if (!db.assets)    db.assets    = [];
+    if (!db.rsu)       db.rsu       = [];
+    if (!db.takeHome)  db.takeHome  = {};
+    if (!db.templates) db.templates = [];
+    saveDB(false);
+    renderMonthly();
+    setSyncDot('ok');
+    updateSyncStatus();
+    showToast('Sheets data normalized — all date formats fixed');
+    btn.textContent = 'Done ✓';
+    setTimeout(() => { btn.textContent = '🔧 Fix & Normalize Sheets data'; btn.disabled = false; }, 3000);
+  } catch (err) {
+    errEl.textContent = '⚠ ' + err.message;
+    errEl.classList.remove('hidden');
+    setSyncDot('error', err.message);
+    btn.textContent = '🔧 Fix & Normalize Sheets data';
     btn.disabled = false;
   }
 });
