@@ -194,18 +194,25 @@ const gasSync = {
       }
       normExp[nk] = (normExp[nk] || []).concat(items);
     });
+    // Completeness score: Paid/Partial status=4, paidAmount>0=2, amount>0=1
+    const score = it => (it.status ? 4 : 0) + (Number(it.paidAmount) > 0 ? 2 : 0) + (Number(it.amount) > 0 ? 1 : 0);
     Object.keys(normExp).forEach(k => {
-      // Deduplicate by id: among duplicates keep the most complete version.
-      // Score = 2 for non-empty status (Paid/Partial) + 1 for non-zero paidAmount.
-      const best = new Map();
+      // Step 1: Dedup by id — catches key-collision duplicates from date normalization
+      const byId = new Map();
       normExp[k].forEach(it => {
-        const prev = best.get(it.id);
-        if (!prev) { best.set(it.id, it); return; }
-        const prevScore = (prev.status ? 2 : 0) + (Number(prev.paidAmount) > 0 ? 1 : 0);
-        const currScore = (it.status   ? 2 : 0) + (Number(it.paidAmount)   > 0 ? 1 : 0);
-        if (currScore >= prevScore) best.set(it.id, it); // latest wins on tie
+        const prev = byId.get(it.id);
+        if (!prev || score(it) > score(prev)) byId.set(it.id, it);
       });
-      normExp[k] = Array.from(best.values());
+      // Step 2: Dedup by name — catches template-loop duplicates that have different ids
+      // but represent the same expense entry (created repeatedly by ensureMonthPopulated).
+      const byName = new Map();
+      byId.forEach(it => {
+        const prev = byName.get(it.name);
+        if (!prev) { byName.set(it.name, it); return; }
+        const ps = score(prev), cs = score(it);
+        if (cs > ps || (cs === ps && Number(it.amount) >= Number(prev.amount))) byName.set(it.name, it);
+      });
+      normExp[k] = Array.from(byName.values());
     });
     // Normalize due dates in every expense item (may arrive as Date.toString(),
     // Sheets serial number, or MM/DD/YYYY if Code.gs hasn't been migrated yet)
