@@ -220,6 +220,26 @@ const gasSync = {
       items.forEach(it => { if (it.due) it.due = normalizeDue(it.due); })
     );
     data.expenses = normExp;
+    // Normalize takeHome keys — same date-conversion issue as expense month_key
+    if (data.takeHome) {
+      const normTH = {};
+      Object.entries(data.takeHome).forEach(([k, v]) => {
+        let nk = k;
+        const d = new Date(k);
+        if (!isNaN(d.getTime()) && d.getFullYear() > 2000) {
+          nk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        } else {
+          const serial = Number(k);
+          if (!isNaN(serial) && serial > 40000 && serial < 60000) {
+            const d2 = new Date((serial - 25569) * 86400 * 1000);
+            if (d2.getFullYear() > 2000)
+              nk = `${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
+          }
+        }
+        normTH[nk] = v;
+      });
+      data.takeHome = normTH;
+    }
     store.set(GAS_SYNC_KEY, new Date().toISOString());
     return data;
   },
