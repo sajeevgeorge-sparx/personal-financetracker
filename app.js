@@ -195,8 +195,17 @@ const gasSync = {
       normExp[nk] = (normExp[nk] || []).concat(items);
     });
     Object.keys(normExp).forEach(k => {
-      const seen = new Set();
-      normExp[k] = normExp[k].filter(it => !seen.has(it.id) && seen.add(it.id));
+      // Deduplicate by id: among duplicates keep the most complete version.
+      // Score = 2 for non-empty status (Paid/Partial) + 1 for non-zero paidAmount.
+      const best = new Map();
+      normExp[k].forEach(it => {
+        const prev = best.get(it.id);
+        if (!prev) { best.set(it.id, it); return; }
+        const prevScore = (prev.status ? 2 : 0) + (Number(prev.paidAmount) > 0 ? 1 : 0);
+        const currScore = (it.status   ? 2 : 0) + (Number(it.paidAmount)   > 0 ? 1 : 0);
+        if (currScore >= prevScore) best.set(it.id, it); // latest wins on tie
+      });
+      normExp[k] = Array.from(best.values());
     });
     // Normalize due dates in every expense item (may arrive as Date.toString(),
     // Sheets serial number, or MM/DD/YYYY if Code.gs hasn't been migrated yet)
@@ -228,7 +237,7 @@ const gasSync = {
   async migrateData() {
     const r = await this._jsonp(this._url('migrate_data'));
     if (r.error) throw new Error(r.error);
-    return r.lastModified || null;
+    return { lastModified: r.lastModified || null, removed: r.removed || 0 };
   },
 };
 
@@ -1666,7 +1675,7 @@ $('btn-gas-migrate').addEventListener('click', async () => {
   btn.disabled = true;
   setSyncDot('syncing');
   try {
-    await gasSync.migrateData();
+    const { removed } = await gasSync.migrateData();
     const data = await gasSync.pull();
     if (!data) throw new Error('No data returned after migration');
     db = data;
@@ -1678,7 +1687,10 @@ $('btn-gas-migrate').addEventListener('click', async () => {
     renderMonthly();
     setSyncDot('ok');
     updateSyncStatus();
-    showToast('Sheets data normalized — all date formats fixed');
+    const msg = removed > 0
+      ? `Sheets normalized — ${removed} duplicate row${removed > 1 ? 's' : ''} removed`
+      : 'Sheets data normalized — all date formats fixed';
+    showToast(msg);
     btn.textContent = 'Done ✓';
     setTimeout(() => { btn.textContent = '🔧 Fix & Normalize Sheets data'; btn.disabled = false; }, 3000);
   } catch (err) {
