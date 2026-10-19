@@ -325,6 +325,14 @@ saveDB(false);
 function uid() { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
 
 // Normalize a due-date value to 'YYYY-MM-DD'. Handles all raw formats from Sheets:
+// Format an ISO timestamp to 'DD-MM-YYYY HH:MM' (24-hour) for display.
+function fmtUpdatedAt(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
 //   - 'YYYY-MM-DD' (already correct)
 //   - Sheets serial number string '46296' (days since Dec 30, 1899)
 //   - Date.toString() 'Sat Mar 08 2025 13:30:00 GMT+0530 (...)'
@@ -757,6 +765,8 @@ function openExpenseModal(mKey, id) {
   $('inp-notes').value  = item?.notes  || '';
   $('btn-delete-item').style.display = item ? '' : 'none';
   togglePartialRow();
+  const expUpdEl = $('expense-updated-note');
+  if (expUpdEl) { expUpdEl.textContent = item?.updatedAt ? `Last updated: ${fmtUpdatedAt(item.updatedAt)}` : ''; expUpdEl.style.display = item?.updatedAt ? '' : 'none'; }
   $('modal-expense').classList.remove('hidden');
   setTimeout(() => $('inp-name').focus(), 50);
 }
@@ -781,6 +791,7 @@ $('form-expense').addEventListener('submit', e => {
     status: $('inp-status').value,
     paidAmount: parseFloat($('inp-paid').value) || 0,
     notes: $('inp-notes').value.trim(),
+    updatedAt: new Date().toISOString(),
   };
 
   if (editingItemKey) {
@@ -882,6 +893,8 @@ function openTemplateModal(id) {
   $('tpl-day').value    = tpl?.dueDay        || '';
   $('tpl-active').value = tpl ? String(tpl.active) : 'true';
   $('btn-delete-template').style.display = tpl ? '' : 'none';
+  const tplUpdEl = $('template-updated-note');
+  if (tplUpdEl) { tplUpdEl.textContent = tpl?.updatedAt ? `Last updated: ${fmtUpdatedAt(tpl.updatedAt)}` : ''; tplUpdEl.style.display = tpl?.updatedAt ? '' : 'none'; }
   $('modal-template').classList.remove('hidden');
   setTimeout(() => $('tpl-name').focus(), 50);
 }
@@ -897,6 +910,7 @@ $('form-template').addEventListener('submit', e => {
     defaultAmount: parseFloat($('tpl-amount').value) || 0,
     dueDay: parseInt($('tpl-day').value) || 1,
     active: $('tpl-active').value === 'true',
+    updatedAt: new Date().toISOString(),
   };
   if (editingTplId) {
     const idx = db.templates.findIndex(t => t.id === editingTplId);
@@ -1016,6 +1030,8 @@ function openRsuModal(id) {
   $('rsu-proceeds').value = sale?.proceeds|| '';
   $('rsu-notes').value    = sale?.notes   || '';
   $('btn-delete-rsu').style.display = sale ? '' : 'none';
+  const rsuUpdEl = $('rsu-updated-note');
+  if (rsuUpdEl) { rsuUpdEl.textContent = sale?.updatedAt ? `Last updated: ${fmtUpdatedAt(sale.updatedAt)}` : ''; rsuUpdEl.style.display = sale?.updatedAt ? '' : 'none'; }
   $('modal-rsu').classList.remove('hidden');
 }
 $('btn-add-rsu').addEventListener('click', () => openRsuModal(null));
@@ -1039,6 +1055,7 @@ $('form-rsu').addEventListener('submit', e => {
     price:    parseFloat($('rsu-price').value)    || 0,
     proceeds: parseFloat($('rsu-proceeds').value) || 0,
     notes:    $('rsu-notes').value.trim(),
+    updatedAt: new Date().toISOString(),
   };
   if (editingRsuId) {
     const idx = db.rsu.findIndex(r => r.id === editingRsuId);
@@ -1508,6 +1525,8 @@ function openAssetModal(id, defaultCat) {
   $('ast-notes').value      = asset?.notes      || '';
   $('btn-delete-asset').style.display = asset ? '' : 'none';
   toggleAssuredRow();
+  const astUpdEl = $('asset-updated-note');
+  if (astUpdEl) { astUpdEl.textContent = asset?.updatedAt ? `Last updated: ${fmtUpdatedAt(asset.updatedAt)}` : ''; astUpdEl.style.display = asset?.updatedAt ? '' : 'none'; }
   $('modal-asset').classList.remove('hidden');
   setTimeout(() => $('ast-name').focus(), 50);
 }
@@ -1526,6 +1545,7 @@ $('form-asset').addEventListener('submit', e => {
     commitFreq:  $('ast-freq').value,
     status:      $('ast-status').value,
     notes:       $('ast-notes').value.trim(),
+    updatedAt:   new Date().toISOString(),
   };
   if (editingAssetId) {
     const idx = db.assets.findIndex(a => a.id === editingAssetId);
