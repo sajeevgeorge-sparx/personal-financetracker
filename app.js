@@ -240,6 +240,10 @@ const gasSync = {
       });
       data.takeHome = normTH;
     }
+    // Normalize RSU dates — same auto-conversion as due dates
+    if (data.rsu) {
+      data.rsu = data.rsu.map(r => ({ ...r, date: r.date ? normalizeDue(r.date) : '' }));
+    }
     store.set(GAS_SYNC_KEY, new Date().toISOString());
     return data;
   },
