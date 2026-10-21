@@ -588,7 +588,6 @@ function ensureMonthPopulated(key) {
 }
 function renderMonthly() {
   const key = monthKey(curYear, curMonth);
-  ensureMonthPopulated(key);
   const items = db.expenses[key] || [];
 
   let total = 0, paid = 0;
@@ -613,7 +612,18 @@ function renderMonthly() {
   const list   = $('expense-list');
 
   if (!sorted.length) {
-    list.innerHTML = '<div class="empty-state">No items yet. Tap "+ Add" to get started.</div>';
+    const hasTemplates = (db.templates || []).some(t => t.active);
+    list.innerHTML = hasTemplates
+      ? `<div class="empty-state">No items yet.
+           <button class="btn-ghost btn-init-month" style="margin-top:8px;display:block">Initialize from templates</button>
+         </div>`
+      : '<div class="empty-state">No items yet. Tap "+ Add" to get started.</div>';
+    if (hasTemplates) {
+      list.querySelector('.btn-init-month').addEventListener('click', () => {
+        ensureMonthPopulated(key);
+        renderMonthly();
+      });
+    }
     return;
   }
 
